@@ -1,0 +1,43 @@
+{
+  "name": "global-agri-market-intelligence",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "prisma:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "automation": "tsx scripts/automation.ts",
+    "automation:check": "tsx scripts/check-automation.ts",
+    "fetch-news": "tsx scripts/run-fetch-news.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^6.19.3",
+    "@prisma/client": "^6.19.3",
+    "lucide-react": "^0.468.0",
+    "next": "^15.0.3",
+    "node-cron": "^3.0.3",
+    "pg": "^8.21.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "recharts": "^2.13.3"
+  },
+  "devDependencies": {
+    "@next/swc-wasm-nodejs": "15.5.18",
+    "@types/node": "^22.10.1",
+    "@types/node-cron": "^3.0.11",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.1",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.16.0",
+    "eslint-config-next": "^15.0.3",
+    "postcss": "^8.4.49",
+    "prisma": "^6.19.3",
+    "tailwindcss": "^3.4.16",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
