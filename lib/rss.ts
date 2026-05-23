@@ -67,7 +67,7 @@ export async function collectRssArticles(
     country?: string | null;
   }
 ): Promise<ArticleInput[]> {
-  const timeoutMs = Math.max(1000, Number(process.env.RSS_FETCH_TIMEOUT_MS || 8000));
+  const timeoutMs = Math.max(1000, Number(process.env.RSS_FETCH_TIMEOUT_MS || 5000));
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 

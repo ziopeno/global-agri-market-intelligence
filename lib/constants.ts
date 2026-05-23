@@ -336,7 +336,7 @@ export const NEWS_SOURCE_SEEDS = [
     url: "https://www.usda.gov/rss/latest-releases.xml",
     category: "정부 정책",
     country: "United States",
-    isActive: true
+    isActive: false
   },
   {
     name: "USDA NASS News",
@@ -364,7 +364,7 @@ export const NEWS_SOURCE_SEEDS = [
     url: "https://www.rd.usda.gov/rss.xml",
     category: "정부 정책",
     country: "United States",
-    isActive: true
+    isActive: false
   },
   {
     name: "World Grain Trade",

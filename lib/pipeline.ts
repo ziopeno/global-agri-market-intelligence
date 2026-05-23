@@ -308,12 +308,18 @@ function serializeReportInput(articles: ReportArticle[]) {
   );
 }
 
-export async function createDailyReport(date = new Date()) {
+type CreateDailyReportOptions = {
+  useAi?: boolean;
+};
+
+export async function createDailyReport(date = new Date(), options: CreateDailyReportOptions = {}) {
   const periodStart = startOfKstDay(date);
   const periodEnd = endOfKstDay(date);
   const articles = await findReportArticles(periodStart, periodEnd);
   const fallback = fallbackDailyReport(articles);
-  const aiReport = await generateDailyReportFromAi(serializeReportInput(articles));
+  const aiReport = options.useAi ?? true
+    ? await generateDailyReportFromAi(serializeReportInput(articles))
+    : null;
   const content: DailyReportContent = {
     ...fallback,
     ...(aiReport || {}),

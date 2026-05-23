@@ -199,16 +199,19 @@ export async function runNewsFetchJob(): Promise<NewsFetchJobResult> {
     results.push(sourceResult);
   }
 
-  const report = await createDailyReport(new Date()).catch(async (error) => {
-    await prisma.newsFetchLog.create({
-      data: {
-        status: "failed",
-        sourceName: "Daily Report",
-        message: error instanceof Error ? error.message : "Daily report update failed"
-      }
-    });
-    return null;
-  });
+  const shouldUpdateReport = totalCreated > 0 || totalAnalyzed > 0;
+  const report = shouldUpdateReport
+    ? await createDailyReport(new Date(), { useAi: false }).catch(async (error) => {
+        await prisma.newsFetchLog.create({
+          data: {
+            status: "failed",
+            sourceName: "Daily Report",
+            message: error instanceof Error ? error.message : "Daily report update failed"
+          }
+        });
+        return null;
+      })
+    : null;
 
   const finishedAt = new Date();
   return {
