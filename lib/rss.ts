@@ -67,12 +67,17 @@ export async function collectRssArticles(
     country?: string | null;
   }
 ): Promise<ArticleInput[]> {
+  const timeoutMs = Math.max(1000, Number(process.env.RSS_FETCH_TIMEOUT_MS || 8000));
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
   const response = await fetch(rssUrl, {
     headers: {
       "User-Agent": "AgriMarketIntelligence/0.1"
     },
+    signal: controller.signal,
     next: { revalidate: 0 }
-  });
+  }).finally(() => clearTimeout(timeout));
 
   if (!response.ok) {
     throw new Error(`RSS 수집 실패: ${response.status} ${response.statusText}`);

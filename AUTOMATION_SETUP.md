@@ -26,6 +26,7 @@ OPENAI_API_KEY="..."
 OPENAI_MODEL="gpt-4.1-mini"
 OPENAI_TIMEOUT_MS="30000"
 RSS_MAX_ITEMS_PER_SOURCE="5"
+RSS_FETCH_TIMEOUT_MS="8000"
 CRON_SECRET="16자_이상의_랜덤_문자열"
 APP_BASE_URL="https://배포주소"
 ```
@@ -36,6 +37,7 @@ APP_BASE_URL="https://배포주소"
 - `OPENAI_API_KEY`: 실제 AI 요약과 요인 추출을 위해 필요합니다.
 - `CRON_SECRET`: 외부에서 자동화 API를 임의 호출하지 못하도록 보호하는 실행 키입니다.
 - `RSS_MAX_ITEMS_PER_SOURCE`: 한 번의 실행에서 Source별로 가져올 최대 기사 수입니다. 초기 운영은 `5`를 권장합니다.
+- `RSS_FETCH_TIMEOUT_MS`: Source별 RSS 응답 대기 시간입니다. 특정 Source가 느려도 전체 작업이 오래 멈추지 않게 합니다.
 
 `OPENAI_API_KEY`가 없으면 데모용 휴리스틱 분석으로 동작하지만, 실제 운영 품질은 OpenAI API 연결이 필요합니다.
 
