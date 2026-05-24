@@ -3,7 +3,7 @@ import { createDailyReport } from "@/lib/pipeline";
 import { prisma } from "@/lib/db";
 import { createArticleDuplicateKey, normalizeArticleUrl } from "@/lib/dedupe";
 import { collectFarmhannongWeeklyArticles, isFarmhannongWeeklySource } from "@/lib/farmhannong-weekly";
-import { ensureProductSeeds } from "@/lib/seed";
+import { ensureCountryWeightSeeds, ensureProductSeeds } from "@/lib/seed";
 import { analyzeAndStoreArticle } from "@/lib/pipeline";
 import type { ArticleInput, NewsFetchJobResult, NewsFetchSourceResult } from "@/lib/types";
 
@@ -109,7 +109,7 @@ async function analyzeNewArticles(articleIds: string[]) {
 
 export async function runNewsFetchJob(): Promise<NewsFetchJobResult> {
   const startedAt = new Date();
-  await ensureProductSeeds();
+  await Promise.all([ensureProductSeeds(), ensureCountryWeightSeeds()]);
 
   const sources = (await prisma.newsSource.findMany({
     where: { isActive: true },

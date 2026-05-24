@@ -2,9 +2,10 @@ import { Prisma, type ReportType } from "@prisma/client";
 import { analyzeArticle, generateDailyReportFromAi } from "@/lib/ai";
 import { prisma } from "@/lib/db";
 import { createArticleDuplicateKey, normalizeArticleUrl } from "@/lib/dedupe";
+import { recalculateArticleScores } from "@/lib/recalculate";
 import { collectRssArticles } from "@/lib/rss";
-import { computeProductImpact } from "@/lib/scoring";
-import { ensureProductSeeds } from "@/lib/seed";
+import { scoreForArticle } from "@/lib/score-adjustments";
+import { ensureCountryWeightSeeds, ensureProductSeeds } from "@/lib/seed";
 import type { ArticleInput, DailyReportContent } from "@/lib/types";
 import { endOfKstDay, startOfKstDay, toTitleDate } from "@/lib/utils";
 
@@ -61,6 +62,7 @@ export async function collectAndStoreRss(rssUrl: string) {
 
 export async function analyzeAndStoreArticle(articleId: string) {
   await ensureProductSeeds();
+  await ensureCountryWeightSeeds();
   const article = await prisma.article.findUnique({
     where: { id: articleId }
   });
@@ -85,6 +87,7 @@ export async function analyzeAndStoreArticle(articleId: string) {
     originalText: article.rawContent || article.originalText
   });
 
+  await prisma.factorEvidence.deleteMany({ where: { articleId } });
   await prisma.articleFactor.deleteMany({ where: { articleId } });
   await prisma.productImpact.deleteMany({ where: { articleId } });
 
@@ -96,6 +99,7 @@ export async function analyzeAndStoreArticle(articleId: string) {
       crop: analysis.crop,
       category: analysis.category,
       marketImpactScore: analysis.market_impact_score,
+      adjustedMarketScore: analysis.market_impact_score,
       analysisStatus: "completed"
     }
   });
@@ -108,6 +112,7 @@ export async function analyzeAndStoreArticle(articleId: string) {
       crop: analysis.crop,
       category: analysis.category,
       marketImpactScore: analysis.market_impact_score,
+      adjustedMarketScore: analysis.market_impact_score,
       rawResponse: analysis as unknown as Prisma.InputJsonValue
     },
     create: {
@@ -117,23 +122,37 @@ export async function analyzeAndStoreArticle(articleId: string) {
       crop: analysis.crop,
       category: analysis.category,
       marketImpactScore: analysis.market_impact_score,
+      adjustedMarketScore: analysis.market_impact_score,
       rawResponse: analysis as unknown as Prisma.InputJsonValue
     }
   });
 
-  await prisma.articleFactor.createMany({
-    data: analysis.factors.map((factor) => ({
-      articleId,
-      factorName: factor.factor_name,
-      direction: factor.direction,
-      impact: factor.impact,
-      likelihood: factor.likelihood,
-      duration: factor.duration,
-      reliability: factor.reliability,
-      factorScore: factor.factor_score,
-      evidence: factor.evidence
-    }))
-  });
+  for (const factor of analysis.factors) {
+    const createdFactor = await prisma.articleFactor.create({
+      data: {
+        articleId,
+        factorName: factor.factor_name,
+        direction: factor.direction,
+        impact: factor.impact,
+        likelihood: factor.likelihood,
+        duration: factor.duration,
+        reliability: factor.reliability,
+        factorScore: factor.factor_score,
+        evidence: factor.evidence
+      }
+    });
+
+    await prisma.factorEvidence.create({
+      data: {
+        articleId,
+        factorId: createdFactor.id,
+        factorName: factor.factor_name,
+        evidenceSentence: factor.evidence || "AI가 기사 본문에서 추출한 근거 문장입니다.",
+        extractedByAi: true,
+        confidence: Number(factor.confidence ?? 0.7)
+      }
+    });
+  }
 
   for (const factor of analysis.factors) {
     await prisma.marketSignal.create({
@@ -148,35 +167,7 @@ export async function analyzeAndStoreArticle(articleId: string) {
     });
   }
 
-  const products = await prisma.product.findMany({
-    include: { sensitivities: true }
-  });
-
-  for (const product of products) {
-    const sensitivityByFactor = Object.fromEntries(
-      product.sensitivities.map((sensitivity) => [sensitivity.factorName, sensitivity.sensitivityScore])
-    );
-    const productImpact = computeProductImpact(analysis.factors, sensitivityByFactor);
-    const rationale = analysis.factors
-      .filter((factor) => Number(sensitivityByFactor[factor.factor_name] ?? 0) !== 0)
-      .slice(0, 3)
-      .map((factor) => {
-        const sensitivity = Number(sensitivityByFactor[factor.factor_name] ?? 0).toFixed(2);
-        return `${factor.factor_name}: factor ${factor.factor_score.toFixed(1)} x sensitivity ${sensitivity}`;
-      })
-      .join("; ");
-
-    await prisma.productImpact.create({
-      data: {
-        productId: product.id,
-        articleId,
-        marketImpactScore: analysis.market_impact_score,
-        sensitivityScore: productImpact.sensitivityScore,
-        productImpactScore: productImpact.productImpactScore,
-        rationale: rationale || "해당 기사 요인과 직접 연결된 민감도가 낮습니다."
-      }
-    });
-  }
+  await recalculateArticleScores(articleId);
 
   return prisma.article.findUniqueOrThrow({
     where: { id: updatedArticle.id },
@@ -206,7 +197,7 @@ async function findReportArticles(periodStart: Date, periodEnd: Date) {
         include: { product: true }
       }
     },
-    orderBy: [{ marketImpactScore: "desc" }, { publishedAt: "desc" }]
+    orderBy: [{ adjustedMarketScore: "desc" }, { marketImpactScore: "desc" }, { publishedAt: "desc" }]
   });
 
   if (periodArticles.length > 0) return periodArticles;
@@ -225,7 +216,7 @@ async function findReportArticles(periodStart: Date, periodEnd: Date) {
 
 function fallbackDailyReport(articles: ReportArticle[]): DailyReportContent {
   const sortedArticles = [...articles].sort(
-    (a, b) => Math.abs(b.marketImpactScore) - Math.abs(a.marketImpactScore)
+    (a, b) => Math.abs(scoreForArticle(b)) - Math.abs(scoreForArticle(a))
   );
   const productScores = new Map<string, number>();
   for (const article of articles) {
@@ -241,9 +232,9 @@ function fallbackDailyReport(articles: ReportArticle[]): DailyReportContent {
     .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
     .slice(0, 5);
 
-  const totalMarketScore = articles.reduce((total, article) => total + article.marketImpactScore, 0);
+  const totalMarketScore = articles.reduce((total, article) => total + scoreForArticle(article), 0);
   const risks = sortedArticles
-    .filter((article) => article.marketImpactScore < 0)
+    .filter((article) => scoreForArticle(article) < 0)
     .slice(0, 4)
     .map((article) => `${article.country || "Global"} ${article.crop || "농업"}: ${article.title}`);
   const opportunities = topProducts
@@ -255,7 +246,7 @@ function fallbackDailyReport(articles: ReportArticle[]): DailyReportContent {
     country_issues: sortedArticles
       .filter((article) => article.country)
       .slice(0, 5)
-      .map((article) => `${article.country}: ${article.category || "시장 신호"} (${article.marketImpactScore.toFixed(1)})`),
+      .map((article) => `${article.country}: ${article.category || "시장 신호"} (${scoreForArticle(article).toFixed(1)})`),
     crop_issues: sortedArticles
       .filter((article) => article.crop)
       .slice(0, 5)
@@ -272,10 +263,10 @@ function fallbackDailyReport(articles: ReportArticle[]): DailyReportContent {
     evidence: sortedArticles.map((article) => ({
       article_id: article.id,
       title: article.title,
-      market_impact_score: article.marketImpactScore,
+      market_impact_score: scoreForArticle(article),
       factor_scores: article.factors.map((factor) => ({
         factor_name: factor.factorName,
-        score: factor.manualFactorScore ?? factor.factorScore,
+        score: factor.adjustedFactorScore || (factor.manualFactorScore ?? factor.factorScore),
         evidence: factor.evidence
       }))
     }))
@@ -291,10 +282,10 @@ function serializeReportInput(articles: ReportArticle[]) {
       crop: article.crop,
       category: article.category,
       summary: article.summary,
-      marketImpactScore: article.marketImpactScore,
+      marketImpactScore: scoreForArticle(article),
       factors: article.factors.map((factor) => ({
         factorName: factor.factorName,
-        factorScore: factor.manualFactorScore ?? factor.factorScore,
+        factorScore: factor.adjustedFactorScore || (factor.manualFactorScore ?? factor.factorScore),
         evidence: factor.evidence
       })),
       productImpacts: article.productImpacts.map((impact) => ({
@@ -444,6 +435,7 @@ export async function createRollupReport(reportType: Exclude<ReportType, "daily"
 
 export async function runDailyPipeline(rssUrls: string[]) {
   await ensureProductSeeds();
+  await ensureCountryWeightSeeds();
   const collected: Array<Awaited<ReturnType<typeof upsertArticle>>> = [];
   for (const rssUrl of rssUrls.filter(Boolean)) {
     collected.push(...(await collectAndStoreRss(rssUrl)));

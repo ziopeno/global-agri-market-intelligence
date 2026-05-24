@@ -17,7 +17,7 @@ export default async function DashboardPage() {
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle>오늘의 시장 영향 점수</CardTitle>
-            <CardDescription>오늘 수집·분석된 기사 기준</CardDescription>
+            <CardDescription>오늘 수집·분석된 기사 기준 보정 점수</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-end justify-between gap-4">
@@ -92,7 +92,7 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>국가별 리스크 지도</CardTitle>
-            <CardDescription>위험과 기회가 동시에 보이는 국가 우선순위</CardDescription>
+            <CardDescription>기사 수 편향을 줄인 정규화·사업중요도 반영 우선순위</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {data.countryRisk.length ? (
@@ -100,9 +100,13 @@ export default async function DashboardPage() {
                 <div key={item.country} className="rounded-md border p-3">
                   <div className="flex items-center justify-between gap-2">
                     <div className="font-medium">{item.country}</div>
-                    <Badge tone={item.score >= 0 ? "green" : "rose"}>{formatScore(item.score)}</Badge>
+                    <Badge tone={(item.weightedCountryScore ?? item.score) >= 0 ? "green" : "rose"}>
+                      {formatScore(item.weightedCountryScore ?? item.score)}
+                    </Badge>
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-500">
+                    <span>Normalized {formatScore(item.normalizedScore ?? item.score)}</span>
+                    <span>BI x{(item.businessImportanceWeight ?? 1).toFixed(1)}</span>
                     <span>Risk {item.risk.toFixed(1)}</span>
                     <span>Opportunity {item.opportunity.toFixed(1)}</span>
                   </div>
@@ -128,8 +132,8 @@ export default async function DashboardPage() {
                     {article.country && <Badge>{article.country}</Badge>}
                     {article.crop && <Badge tone="green">{article.crop}</Badge>}
                     {article.category && <Badge tone="amber">{article.category}</Badge>}
-                    <span className={`rounded-sm border px-2 py-1 text-xs font-medium ${scoreTone(article.marketImpactScore)}`}>
-                      {formatScore(article.marketImpactScore)}
+                    <span className={`rounded-sm border px-2 py-1 text-xs font-medium ${scoreTone(article.adjustedMarketScore ?? article.marketImpactScore)}`}>
+                      {formatScore(article.adjustedMarketScore ?? article.marketImpactScore)}
                     </span>
                   </div>
                   <div className="mt-3 flex items-start justify-between gap-4">

@@ -42,8 +42,12 @@ export default async function StrategyPage() {
       priority: item.opportunity >= item.risk ? "공략" : "관리"
     }))
     .slice(0, 8);
-  const riskWarnings = dashboard.keyNews.filter((article) => article.marketImpactScore < 0).slice(0, 5);
-  const opportunityNews = dashboard.keyNews.filter((article) => article.marketImpactScore > 0).slice(0, 5);
+  const riskWarnings = dashboard.keyNews
+    .filter((article) => (article.adjustedMarketScore ?? article.marketImpactScore) < 0)
+    .slice(0, 5);
+  const opportunityNews = dashboard.keyNews
+    .filter((article) => (article.adjustedMarketScore ?? article.marketImpactScore) > 0)
+    .slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -111,7 +115,7 @@ export default async function StrategyPage() {
             {riskWarnings.length ? (
               riskWarnings.map((article) => (
                 <div key={article.id} className="rounded-md border p-3">
-                  <Badge tone="rose">{formatScore(article.marketImpactScore)}</Badge>
+                  <Badge tone="rose">{formatScore(article.adjustedMarketScore ?? article.marketImpactScore)}</Badge>
                   <p className="mt-2 text-sm font-medium text-slate-800">{article.title}</p>
                 </div>
               ))
@@ -133,7 +137,7 @@ export default async function StrategyPage() {
             {opportunityNews.length ? (
               opportunityNews.map((article) => (
                 <div key={article.id} className="rounded-md border p-3">
-                  <Badge tone="green">{formatScore(article.marketImpactScore)}</Badge>
+                  <Badge tone="green">{formatScore(article.adjustedMarketScore ?? article.marketImpactScore)}</Badge>
                   <p className="mt-2 text-sm font-medium text-slate-800">{article.title}</p>
                 </div>
               ))

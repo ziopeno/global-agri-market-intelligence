@@ -1,9 +1,17 @@
-import { DEFAULT_SENSITIVITY, MARKET_FACTORS, NEWS_SOURCE_SEEDS, PRODUCT_SEEDS, SAMPLE_ARTICLES } from "@/lib/constants";
+import {
+  COUNTRY_WEIGHT_SEEDS,
+  DEFAULT_SENSITIVITY,
+  MARKET_FACTORS,
+  NEWS_SOURCE_SEEDS,
+  PRODUCT_SEEDS,
+  SAMPLE_ARTICLES
+} from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { createArticleDuplicateKey, normalizeArticleUrl } from "@/lib/dedupe";
 
 let productSeedsReady = false;
 let newsSourceSeedsReady = false;
+let countryWeightSeedsReady = false;
 
 const LEGACY_BROKEN_SOURCE_NAMES = [
   "World Bank Agriculture",
@@ -57,6 +65,20 @@ export async function ensureProductSeeds() {
   }
 
   productSeedsReady = true;
+}
+
+export async function ensureCountryWeightSeeds() {
+  if (countryWeightSeedsReady) return;
+
+  for (const seed of COUNTRY_WEIGHT_SEEDS) {
+    await prisma.countryBusinessWeight.upsert({
+      where: { country: seed.country },
+      update: {},
+      create: seed
+    });
+  }
+
+  countryWeightSeedsReady = true;
 }
 
 export async function ensureSampleArticles() {

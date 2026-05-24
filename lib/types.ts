@@ -26,6 +26,7 @@ export type ExtractedFactor = {
   reliability: number;
   factor_score: number;
   evidence: string;
+  confidence?: number;
 };
 
 export type ArticleAnalysis = {

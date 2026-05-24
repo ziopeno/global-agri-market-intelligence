@@ -33,10 +33,17 @@ function factorScoreValue(factor: any) {
   return Number(factor.manualFactorScore ?? factor.factorScore ?? 0);
 }
 
+function adjustedFactorScoreValue(factor: any) {
+  const adjusted = Number(factor.adjustedFactorScore ?? 0);
+  return adjusted !== 0 ? adjusted : factorScoreValue(factor);
+}
+
 function articleMarketScore(article: ArticleRow) {
+  const adjusted = Number(article.adjustedMarketScore ?? 0);
+  if (adjusted !== 0) return adjusted;
   const factors = article.factors || [];
   if (!factors.length) return Number(article.marketImpactScore || 0);
-  return factors.reduce((sum: number, factor: any) => sum + factorScoreValue(factor), 0);
+  return factors.reduce((sum: number, factor: any) => sum + adjustedFactorScoreValue(factor), 0);
 }
 
 function signedFormula(factor: any) {
@@ -158,12 +165,12 @@ function buildMarketImpactReason(article: ArticleRow) {
 
   const total = articleMarketScore(article);
   const topFactors = [...factors]
-    .sort((a: any, b: any) => Math.abs(factorScoreValue(b)) - Math.abs(factorScoreValue(a)))
+    .sort((a: any, b: any) => Math.abs(adjustedFactorScoreValue(b)) - Math.abs(adjustedFactorScoreValue(a)))
     .slice(0, 4);
 
   return {
     total,
-    formula: "각 항목은 원문 일부와 번역/해석을 기준으로 사용법 탭의 정량 구간에 맞춰 판단했습니다.",
+    formula: "각 항목은 원문 일부와 번역/해석을 기준으로 판단한 Factor Score에 시장 규모, 제품 관련성, 최신성, 근거 강도를 곱해 보정했습니다.",
     topFactors
   };
 }
@@ -487,7 +494,7 @@ function WeeklyCardAnalysis({ article, relatedProducts, marketImpactReason }: {
         <div className="mx-auto w-[92%] rounded-md border bg-sky-50 p-3">
           <div className="text-xs font-semibold text-sky-700">2. 시장 신호 추출</div>
           <div className="mt-1 text-sm font-semibold text-slate-950">
-            {factor?.factorName || article.category || "시장 신호"} {factor ? formatScore(factorScoreValue(factor)) : formatScore(article.marketImpactScore)}
+            {factor?.factorName || article.category || "시장 신호"} {factor ? formatScore(adjustedFactorScoreValue(factor)) : formatScore(articleMarketScore(article))}
           </div>
           <p className="mt-1 text-xs leading-5 text-slate-600">{factor?.evidence || article.summary || "기사 요약에서 핵심 시장 변수를 추출했습니다."}</p>
         </div>
@@ -496,7 +503,9 @@ function WeeklyCardAnalysis({ article, relatedProducts, marketImpactReason }: {
           <div className="text-xs font-semibold text-emerald-700">3. 점수화</div>
           <div className="mt-1 text-sm font-semibold text-slate-950">Market Impact {formatScore(marketImpactReason.total)}</div>
           <p className="mt-1 text-xs leading-5 text-slate-600">
-            {factor ? `${signedFormula(factor)} = ${formatScore(factorScoreValue(factor))}` : "추출된 요인을 합산해 시장 영향 점수를 계산했습니다."}
+            {factor
+              ? `${signedFormula(factor)} = ${formatScore(factorScoreValue(factor))}, 보정 후 ${formatScore(adjustedFactorScoreValue(factor))}`
+              : "추출된 요인을 합산해 시장 영향 점수를 계산했습니다."}
           </p>
         </div>
 
@@ -595,8 +604,8 @@ function ArticleCard({
           {article.country && <Badge>{article.country}</Badge>}
           {article.crop && <Badge tone="green">{article.crop}</Badge>}
           {article.category && <Badge tone="amber">{article.category}</Badge>}
-          <span className={`rounded-sm border px-2 py-1 text-xs font-medium ${scoreTone(article.marketImpactScore)}`}>
-            {formatScore(article.marketImpactScore)}
+          <span className={`rounded-sm border px-2 py-1 text-xs font-medium ${scoreTone(articleMarketScore(article))}`}>
+            {formatScore(articleMarketScore(article))}
           </span>
         </div>
         <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">
@@ -686,6 +695,9 @@ function ArticleCard({
                   <span className="font-mono text-slate-600">
                     {signedFormula(factor)} = {formatScore(factorScoreValue(factor))}
                   </span>
+                </div>
+                <div className="mt-1 font-mono text-slate-500">
+                  보정 = {formatScore(adjustedFactorScoreValue(factor))} · Market Size x{Number(factor.marketSizeWeight ?? 1).toFixed(2)} · Product x{Number(factor.productRelevanceWeight ?? 1).toFixed(2)} · Recency x{Number(factor.recencyWeight ?? 1).toFixed(2)} · Evidence x{Number(factor.evidenceStrength ?? 1).toFixed(2)}
                 </div>
                 <div className="mt-2 space-y-1">
                   {scoreBreakdownRows(article, factor).map((row) => (

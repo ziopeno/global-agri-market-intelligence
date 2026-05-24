@@ -3,7 +3,7 @@
 import type React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, BookOpenText, FileText, Grid3X3, Newspaper, Radar, Rss } from "lucide-react";
+import { BarChart3, BookOpenText, ClipboardCheck, FileText, Grid3X3, Newspaper, Radar, Rss } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -11,6 +11,7 @@ const navItems = [
   { href: "/guide", label: "사용법", icon: BookOpenText },
   { href: "/sources", label: "소스", icon: Rss },
   { href: "/news", label: "뉴스", icon: Newspaper },
+  { href: "/review", label: "검토", icon: ClipboardCheck },
   { href: "/matrix", label: "매트릭스", icon: Grid3X3 },
   { href: "/reports", label: "리포트", icon: FileText },
   { href: "/strategy", label: "전략", icon: Radar }

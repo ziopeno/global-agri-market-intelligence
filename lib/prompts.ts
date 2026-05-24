@@ -49,7 +49,8 @@ Return this JSON shape:
       "likelihood": 1,
       "duration": 1.0,
       "reliability": 0.8,
-      "evidence": "short Korean evidence from article, including the reason for the selected score bucket"
+      "evidence": "short Korean evidence from article, including the reason for the selected score bucket",
+      "confidence": 0.7
     }
   ],
   "related_products": [${PRODUCT_SEEDS.map((product) => `"${product.name}"`).join(", ")}]

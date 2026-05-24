@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { generatePeriodStrategyFromAi } from "@/lib/ai";
 import { prisma } from "@/lib/db";
+import { scoreForArticle } from "@/lib/score-adjustments";
 
 export const dynamic = "force-dynamic";
 
@@ -14,8 +15,9 @@ type PeriodStrategyResult = {
   action_items: string[];
 };
 
-function factorScore(factor: { manualFactorScore: number | null; factorScore: number }) {
-  return Number(factor.manualFactorScore ?? factor.factorScore ?? 0);
+function factorScore(factor: { manualFactorScore: number | null; factorScore: number; adjustedFactorScore?: number | null }) {
+  const adjusted = Number(factor.adjustedFactorScore ?? 0);
+  return adjusted !== 0 ? adjusted : Number(factor.manualFactorScore ?? factor.factorScore ?? 0);
 }
 
 function fallbackStrategy(input: {
@@ -63,7 +65,7 @@ export async function POST(request: Request) {
 
   const totalMarketScore = articles.reduce((total, article) => {
     const factorTotal = article.factors.reduce((sum, factor) => sum + factorScore(factor), 0);
-    return total + (article.factors.length ? factorTotal : article.marketImpactScore);
+    return total + (article.factors.length ? factorTotal : scoreForArticle(article));
   }, 0);
 
   const signalScores = new Map<string, number>();
@@ -105,7 +107,7 @@ export async function POST(request: Request) {
       country: article.country,
       category: article.category,
       summary: article.summary,
-      marketImpactScore: article.marketImpactScore,
+      marketImpactScore: scoreForArticle(article),
       factors: article.factors.map((factor) => ({
         factorName: factor.factorName,
         score: factorScore(factor),

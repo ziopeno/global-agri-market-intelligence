@@ -452,3 +452,42 @@ export const NEWS_SOURCE_SEEDS = [
     isActive: true
   }
 ] as const;
+
+export const COUNTRY_WEIGHT_SEEDS = [
+  {
+    country: "Philippines",
+    marketSizeWeight: 1.25,
+    businessImportanceWeight: 1.5,
+    notes: "동남아 벼 제초제 전략 우선 시장"
+  },
+  {
+    country: "Vietnam",
+    marketSizeWeight: 1.2,
+    businessImportanceWeight: 1.3,
+    notes: "벼 중심 전략 시장"
+  },
+  {
+    country: "Brazil",
+    marketSizeWeight: 1.3,
+    businessImportanceWeight: 1.2,
+    notes: "대두·옥수수 대형 시장"
+  },
+  {
+    country: "USA",
+    marketSizeWeight: 1.4,
+    businessImportanceWeight: 0.8,
+    notes: "정보 신뢰도는 높지만 직접 영업 우선순위는 낮게 시작"
+  },
+  {
+    country: "미국",
+    marketSizeWeight: 1.4,
+    businessImportanceWeight: 0.8,
+    notes: "USA와 동일한 기본값"
+  },
+  {
+    country: "Global",
+    marketSizeWeight: 1,
+    businessImportanceWeight: 1,
+    notes: "국가 미지정 기본값"
+  }
+] as const;

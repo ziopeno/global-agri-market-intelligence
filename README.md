@@ -22,6 +22,8 @@ News -> Signal -> Trend -> Insight -> Strategy
 - 기본 대시보드
 - 제품 민감도 수정
 - AI 점수 수동 수정 및 재계산
+- 보정 시장 점수, 국가 정규화 점수, 사업 중요도 가중치
+- Factor Evidence와 점수 수정 이력 저장
 - Vercel Cron / node-cron 자동화 코드
 
 ## 폴더 구조
@@ -34,12 +36,14 @@ app/
     cron/daily/
     dashboard/
     factors/[id]/
+    country-weights/
     jobs/fetch-news/
     news-sources/
     products/
     reports/daily/
   matrix/
   news/
+  review/
   reports/
   sources/
   strategy/
@@ -83,6 +87,9 @@ scripts/
 - `news_sources`
 - `article_analyses`
 - `article_factors`
+- `factor_evidence`
+- `factor_score_revisions`
+- `country_business_weights`
 - `news_fetch_logs`
 - `market_signals`
 - `products`
@@ -93,6 +100,7 @@ scripts/
 추가로 근거와 수정 이력을 위해 아래 필드를 보강했습니다.
 
 - `articles.market_impact_score`
+- `articles.adjusted_market_score`
 - `articles.source_id`
 - `articles.raw_content`
 - `articles.fetch_status`
@@ -101,8 +109,14 @@ scripts/
 - `articles.fetched_at`
 - `articles.review_status`
 - `article_analyses.raw_response`
+- `article_analyses.adjusted_market_score`
 - `article_factors.evidence`
 - `article_factors.manual_factor_score`
+- `article_factors.market_size_weight`
+- `article_factors.product_relevance_weight`
+- `article_factors.recency_weight`
+- `article_factors.evidence_strength`
+- `article_factors.adjusted_factor_score`
 - `product_impact.rationale`
 - `reports.source_article_ids`
 
@@ -111,10 +125,14 @@ scripts/
 ```text
 Factor Score = Direction x Impact x Likelihood x Duration x Reliability
 Market Impact Score = sum(Factor Score)
-Product Impact Score = sum(Factor Score x Product Sensitivity)
+Adjusted Market Score = Factor Score x Market Size Weight x Product Relevance Weight x Recency Weight x Evidence Strength
+Normalized Country Score = Country Total Score / Article Count
+Weighted Country Score = Normalized Country Score x Business Importance Weight
+Product Impact Score = sum(Adjusted Factor Score x Product Sensitivity)
 ```
 
 제품 영향 점수는 기사 안의 여러 요인이 서로 다른 민감도와 연결될 수 있으므로, MVP에서는 요인별 곱을 합산합니다.
+관리자는 `/review`에서 국가별 `Business Importance Weight`와 요인별 점수·근거 문장을 수정할 수 있으며, 수정 이력은 `factor_score_revisions`에 저장됩니다.
 
 ## 실행 방법
 
@@ -282,6 +300,7 @@ npm run automation
 - `/` 메인 대시보드
 - `/sources` News Sources 관리 및 수동 fetch 실행
 - `/news` 뉴스 관리
+- `/review` Factor Review 및 국가 가중치 관리
 - `/matrix` 제품 영향 매트릭스
 - `/reports` 리포트 생성 및 저장
 - `/strategy` 전략 인사이트
@@ -295,6 +314,8 @@ npm run automation
 - `POST /api/news-sources`
 - `PUT /api/news-sources`
 - `DELETE /api/news-sources`
+- `GET /api/country-weights`
+- `PUT /api/country-weights`
 - `POST /api/jobs/fetch-news`
 - `PATCH /api/factors/:id`
 - `GET /api/products`

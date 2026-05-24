@@ -12,7 +12,11 @@ export function getFallbackDashboardData() {
     countryRisk: SAMPLE_ARTICLES.map((article, index) => ({
       country: article.country || "Global",
       score: index === 0 ? -4.8 : index === 1 ? 3.6 : -2.4,
+      rawScore: index === 0 ? -4.8 : index === 1 ? 3.6 : -2.4,
       count: 1,
+      normalizedScore: index === 0 ? -4.8 : index === 1 ? 3.6 : -2.4,
+      businessImportanceWeight: 1,
+      weightedCountryScore: index === 0 ? -4.8 : index === 1 ? 3.6 : -2.4,
       risk: index === 1 ? 0 : index === 0 ? 4.8 : 2.4,
       opportunity: index === 1 ? 3.6 : 0
     })),
@@ -26,6 +30,7 @@ export function getFallbackDashboardData() {
       url: article.url,
       summary: article.summary,
       marketImpactScore: index === 0 ? -4.8 : index === 1 ? 3.6 : -2.4,
+      adjustedMarketScore: index === 0 ? -4.8 : index === 1 ? 3.6 : -2.4,
       publishedAt: article.publishedAt
     })),
     weeklyInsights: ["기상재해 신호 1건 반복", "재배면적 신호 1건 반복", "등록/규제 이슈 신호 1건 반복"],

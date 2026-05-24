@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { computeFactorScore, computeProductImpact } from "@/lib/scoring";
+import { recalculateArticleScores, revisionValues } from "@/lib/recalculate";
+import { computeFactorScore } from "@/lib/scoring";
+import { clamp } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +10,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params;
   const body = await request.json();
   const existing = await prisma.articleFactor.findUnique({
-    where: { id }
+    where: { id },
+    include: {
+      factorEvidence: {
+        orderBy: { createdAt: "desc" },
+        take: 1
+      }
+    }
   });
 
   if (!existing) {
@@ -21,6 +29,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const duration = body.duration === undefined ? existing.duration : Number(body.duration);
   const reliability = body.reliability === undefined ? existing.reliability : Number(body.reliability);
   const factorScore = computeFactorScore({ direction, impact, likelihood, duration, reliability });
+  const manualFactorScore =
+    body.manualFactorScore === undefined
+      ? existing.manualFactorScore
+      : body.manualFactorScore === null || body.manualFactorScore === ""
+        ? null
+        : Number(body.manualFactorScore);
+  const evidence = body.evidence === undefined ? existing.evidence : String(body.evidence);
 
   const factor = await prisma.articleFactor.update({
     where: { id },
@@ -31,76 +46,68 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       duration,
       reliability,
       factorScore,
-      manualFactorScore:
-        body.manualFactorScore === undefined
-          ? existing.manualFactorScore
-          : body.manualFactorScore === null
-            ? null
-            : Number(body.manualFactorScore),
-      evidence: body.evidence === undefined ? existing.evidence : String(body.evidence)
+      manualFactorScore,
+      evidence
     }
   });
 
-  const factors = await prisma.articleFactor.findMany({
-    where: { articleId: factor.articleId }
-  });
-  const marketImpactScore = Number(
-    factors.reduce((total, item) => total + Number(item.manualFactorScore ?? item.factorScore), 0).toFixed(2)
-  );
-  await prisma.article.update({
-    where: { id: factor.articleId },
+  const reviewerComment = body.reviewerComment ? String(body.reviewerComment) : null;
+  await prisma.factorScoreRevision.create({
     data: {
-      marketImpactScore,
-      reviewStatus: "human_reviewed"
+      articleId: factor.articleId,
+      factorId: factor.id,
+      factorName: factor.factorName,
+      previousValues: revisionValues(existing),
+      newValues: revisionValues(factor),
+      reviewerComment
     }
   });
-  await prisma.articleAnalysis.update({
-    where: { articleId: factor.articleId },
-    data: { marketImpactScore }
-  }).catch(() => undefined);
 
-  const products = await prisma.product.findMany({
-    include: { sensitivities: true }
-  });
-  for (const product of products) {
-    const sensitivityByFactor = Object.fromEntries(
-      product.sensitivities.map((sensitivity) => [sensitivity.factorName, sensitivity.sensitivityScore])
-    );
-    const impact = computeProductImpact(
-      factors.map((item) => ({
-        factor_name: item.factorName,
-        direction: item.direction as 1 | -1,
-        impact: item.impact,
-        likelihood: item.likelihood,
-        duration: item.duration,
-        reliability: item.reliability,
-        factor_score: item.manualFactorScore ?? item.factorScore,
-        evidence: item.evidence || ""
-      })),
-      sensitivityByFactor
-    );
+  if (body.evidence !== undefined || body.confidence !== undefined || body.reviewerComment !== undefined) {
+    const latestEvidence = existing.factorEvidence[0];
+    const evidenceSentence =
+      body.evidence === undefined
+        ? latestEvidence?.evidenceSentence || evidence || "검토자가 근거 문장을 아직 입력하지 않았습니다."
+        : String(body.evidence);
+    const confidence =
+      body.confidence === undefined
+        ? Number(latestEvidence?.confidence ?? 0.7)
+        : clamp(Number(body.confidence), 0, 1);
 
-    await prisma.productImpact.upsert({
-      where: {
-        productId_articleId: {
-          productId: product.id,
-          articleId: factor.articleId
+    if (latestEvidence) {
+      await prisma.factorEvidence.update({
+        where: { id: latestEvidence.id },
+        data: {
+          evidenceSentence,
+          confidence,
+          extractedByAi: body.evidence === undefined ? latestEvidence.extractedByAi : false,
+          reviewerComment
         }
-      },
-      update: {
-        marketImpactScore,
-        sensitivityScore: impact.sensitivityScore,
-        productImpactScore: impact.productImpactScore
-      },
-      create: {
-        productId: product.id,
-        articleId: factor.articleId,
-        marketImpactScore,
-        sensitivityScore: impact.sensitivityScore,
-        productImpactScore: impact.productImpactScore
-      }
-    });
+      });
+    } else {
+      await prisma.factorEvidence.create({
+        data: {
+          articleId: factor.articleId,
+          factorId: factor.id,
+          factorName: factor.factorName,
+          evidenceSentence,
+          extractedByAi: body.evidence === undefined,
+          confidence,
+          reviewerComment
+        }
+      });
+    }
   }
 
-  return NextResponse.json({ factor, marketImpactScore });
+  const recalculated = await recalculateArticleScores(factor.articleId);
+  await prisma.article.update({
+    where: { id: factor.articleId },
+    data: { reviewStatus: "human_reviewed" }
+  });
+
+  return NextResponse.json({
+    factor,
+    marketImpactScore: recalculated.rawMarketImpactScore,
+    adjustedMarketScore: recalculated.adjustedMarketScore
+  });
 }

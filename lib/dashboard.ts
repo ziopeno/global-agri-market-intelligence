@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/db";
 import { getFallbackDashboardData } from "@/lib/fallback-data";
-import { ensureProductSeeds } from "@/lib/seed";
+import { scoreForArticle } from "@/lib/score-adjustments";
+import { ensureCountryWeightSeeds, ensureProductSeeds } from "@/lib/seed";
 import { endOfKstDay, startOfKstDay } from "@/lib/utils";
 
 export async function getDashboardData() {
   try {
-    await ensureProductSeeds();
+    await Promise.all([ensureProductSeeds(), ensureCountryWeightSeeds()]);
   } catch (error) {
     console.warn("Dashboard fallback: database is not available.", error);
     return getFallbackDashboardData();
@@ -16,7 +17,7 @@ export async function getDashboardData() {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const [articles, todayArticles] = await Promise.all([
+  const [articles, todayArticles, countryWeights] = await Promise.all([
     prisma.article.findMany({
       where: {
         OR: [{ publishedAt: { gte: thirtyDaysAgo } }, { createdAt: { gte: thirtyDaysAgo } }]
@@ -44,22 +45,46 @@ export async function getDashboardData() {
       },
       orderBy: { publishedAt: "desc" },
       take: 30
-    })
+    }),
+    prisma.countryBusinessWeight.findMany()
   ]);
 
-  const todayMarketImpact = todayArticles.reduce((total, article) => total + article.marketImpactScore, 0);
+  const countryWeightByName = new Map(countryWeights.map((weight) => [weight.country, weight]));
+  const todayMarketImpact = todayArticles.reduce((total, article) => total + scoreForArticle(article), 0);
   const productScores = new Map<string, number>();
-  const countryScores = new Map<string, { score: number; count: number; risk: number; opportunity: number }>();
+  const countryScores = new Map<
+    string,
+    {
+      rawScore: number;
+      score: number;
+      count: number;
+      risk: number;
+      opportunity: number;
+      businessImportanceWeight: number;
+    }
+  >();
   const categoryCounts = new Map<string, number>();
   const dailyScores = new Map<string, number>();
 
   for (const article of articles) {
     const country = article.country || "Global";
-    const countryCurrent = countryScores.get(country) || { score: 0, count: 0, risk: 0, opportunity: 0 };
-    countryCurrent.score += article.marketImpactScore;
+    const countryWeight = countryWeightByName.get(country) || countryWeightByName.get("Global");
+    const businessImportanceWeight = Number(countryWeight?.businessImportanceWeight ?? 1);
+    const adjustedScore = scoreForArticle(article);
+    const countryCurrent = countryScores.get(country) || {
+      rawScore: 0,
+      score: 0,
+      count: 0,
+      risk: 0,
+      opportunity: 0,
+      businessImportanceWeight
+    };
+    countryCurrent.rawScore += article.marketImpactScore;
+    countryCurrent.score += adjustedScore;
     countryCurrent.count += 1;
-    if (article.marketImpactScore < 0) countryCurrent.risk += Math.abs(article.marketImpactScore);
-    if (article.marketImpactScore > 0) countryCurrent.opportunity += article.marketImpactScore;
+    countryCurrent.businessImportanceWeight = businessImportanceWeight;
+    if (adjustedScore < 0) countryCurrent.risk += Math.abs(adjustedScore);
+    if (adjustedScore > 0) countryCurrent.opportunity += adjustedScore;
     countryScores.set(country, countryCurrent);
 
     if (article.category) {
@@ -68,7 +93,7 @@ export async function getDashboardData() {
 
     if (article.publishedAt >= sevenDaysAgo || article.createdAt >= sevenDaysAgo) {
       const key = article.publishedAt.toISOString().slice(0, 10);
-      dailyScores.set(key, Number(((dailyScores.get(key) || 0) + article.marketImpactScore).toFixed(2)));
+      dailyScores.set(key, Number(((dailyScores.get(key) || 0) + adjustedScore).toFixed(2)));
     }
 
     for (const impact of article.productImpacts) {
@@ -85,14 +110,22 @@ export async function getDashboardData() {
     .slice(0, 10);
 
   const countryRisk = [...countryScores.entries()]
-    .map(([country, item]) => ({
-      country,
-      score: Number(item.score.toFixed(2)),
-      count: item.count,
-      risk: Number(item.risk.toFixed(2)),
-      opportunity: Number(item.opportunity.toFixed(2))
-    }))
-    .sort((a, b) => b.risk - a.risk)
+    .map(([country, item]) => {
+      const normalizedScore = item.count ? item.score / item.count : 0;
+      const weightedCountryScore = normalizedScore * item.businessImportanceWeight;
+      return {
+        country,
+        rawScore: Number(item.rawScore.toFixed(2)),
+        score: Number(item.score.toFixed(2)),
+        count: item.count,
+        normalizedScore: Number(normalizedScore.toFixed(2)),
+        businessImportanceWeight: Number(item.businessImportanceWeight.toFixed(2)),
+        weightedCountryScore: Number(weightedCountryScore.toFixed(2)),
+        risk: Number(item.risk.toFixed(2)),
+        opportunity: Number(item.opportunity.toFixed(2))
+      };
+    })
+    .sort((a, b) => Math.abs(b.weightedCountryScore) - Math.abs(a.weightedCountryScore))
     .slice(0, 12);
 
   const weeklyInsights = [...categoryCounts.entries()]
@@ -116,6 +149,7 @@ export async function getDashboardData() {
       url: article.url,
       summary: article.summary,
       marketImpactScore: article.marketImpactScore,
+      adjustedMarketScore: scoreForArticle(article),
       publishedAt: article.publishedAt
     })),
     weeklyInsights,

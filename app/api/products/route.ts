@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { ensureProductSeeds } from "@/lib/seed";
+import { recalculateArticleScores } from "@/lib/recalculate";
+import { ensureCountryWeightSeeds, ensureProductSeeds } from "@/lib/seed";
 import { clamp } from "@/lib/utils";
-import { computeProductImpact } from "@/lib/scoring";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +26,7 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   await ensureProductSeeds();
+  await ensureCountryWeightSeeds();
   const body = await request.json();
   const updates = Array.isArray(body.updates)
     ? body.updates
@@ -62,52 +63,19 @@ export async function PUT(request: Request) {
     );
   }
 
-  const articles = await prisma.article.findMany({
-    include: { factors: true }
-  });
-  for (const productId of productIds) {
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
-      include: { sensitivities: true }
-    });
-    if (!product) continue;
-    const sensitivityByFactor = Object.fromEntries(
-      product.sensitivities.map((sensitivity) => [sensitivity.factorName, sensitivity.sensitivityScore])
-    );
-    for (const article of articles) {
-      const factors = article.factors.map((factor) => ({
-        factor_name: factor.factorName,
-        direction: factor.direction as 1 | -1,
-        impact: factor.impact,
-        likelihood: factor.likelihood,
-        duration: factor.duration,
-        reliability: factor.reliability,
-        factor_score: factor.manualFactorScore ?? factor.factorScore,
-        evidence: factor.evidence || ""
-      }));
-      const impact = computeProductImpact(factors, sensitivityByFactor);
-      await prisma.productImpact.upsert({
-        where: {
-          productId_articleId: {
-            productId,
-            articleId: article.id
-          }
-        },
-        update: {
-          marketImpactScore: article.marketImpactScore,
-          sensitivityScore: impact.sensitivityScore,
-          productImpactScore: impact.productImpactScore
-        },
-        create: {
-          productId,
-          articleId: article.id,
-          marketImpactScore: article.marketImpactScore,
-          sensitivityScore: impact.sensitivityScore,
-          productImpactScore: impact.productImpactScore
-        }
-      });
-    }
+  const articles = productIds.size
+    ? await prisma.article.findMany({
+        select: { id: true },
+        where: { factors: { some: {} } }
+      })
+    : [];
+  for (const article of articles) {
+    await recalculateArticleScores(article.id);
   }
 
-  return NextResponse.json({ updated: results.length, recalculatedProducts: productIds.size });
+  return NextResponse.json({
+    updated: results.length,
+    recalculatedProducts: productIds.size,
+    recalculatedArticles: articles.length
+  });
 }

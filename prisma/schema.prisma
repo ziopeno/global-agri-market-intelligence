@@ -57,29 +57,31 @@ model NewsSource {
 }
 
 model Article {
-  id                String          @id @default(cuid())
-  title             String
-  source            String
-  url               String          @unique
-  sourceId          String?         @map("source_id")
-  newsSource        NewsSource?     @relation(fields: [sourceId], references: [id], onDelete: SetNull)
-  publishedAt       DateTime        @map("published_at")
-  country           String?
-  crop              String?
-  category          String?
-  originalText      String          @map("original_text") @db.Text
-  rawContent        String?         @map("raw_content") @db.Text
-  summary           String?         @db.Text
-  marketImpactScore Float           @default(0) @map("market_impact_score")
-  fetchStatus       FetchStatus     @default(pending) @map("fetch_status")
-  analysisStatus    AnalysisStatus  @default(pending) @map("analysis_status")
-  duplicateKey      String          @unique @default(cuid()) @map("duplicate_key")
-  fetchedAt         DateTime?       @map("fetched_at")
-  reviewStatus      ReviewStatus    @default(ai_generated) @map("review_status")
-  createdAt         DateTime        @default(now()) @map("created_at")
-  factors           ArticleFactor[]
-  productImpacts    ProductImpact[]
-  analysis          ArticleAnalysis?
+  id                  String           @id @default(cuid())
+  title               String
+  source              String
+  url                 String           @unique
+  sourceId            String?          @map("source_id")
+  newsSource          NewsSource?      @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  publishedAt         DateTime         @map("published_at")
+  country             String?
+  crop                String?
+  category            String?
+  originalText        String           @map("original_text") @db.Text
+  rawContent          String?          @map("raw_content") @db.Text
+  summary             String?          @db.Text
+  marketImpactScore   Float            @default(0) @map("market_impact_score")
+  adjustedMarketScore Float            @default(0) @map("adjusted_market_score")
+  fetchStatus         FetchStatus      @default(pending) @map("fetch_status")
+  analysisStatus      AnalysisStatus   @default(pending) @map("analysis_status")
+  duplicateKey        String           @unique @default(cuid()) @map("duplicate_key")
+  fetchedAt           DateTime?        @map("fetched_at")
+  reviewStatus        ReviewStatus     @default(ai_generated) @map("review_status")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  factors             ArticleFactor[]
+  factorEvidence      FactorEvidence[]
+  productImpacts      ProductImpact[]
+  analysis            ArticleAnalysis?
 
   @@index([publishedAt])
   @@index([sourceId])
@@ -92,17 +94,18 @@ model Article {
 }
 
 model ArticleAnalysis {
-  id                String   @id @default(cuid())
-  articleId         String   @unique @map("article_id")
-  article           Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  summary           String   @db.Text
-  country           String?
-  crop              String?
-  category          String?
-  marketImpactScore Float    @map("market_impact_score")
-  rawResponse       Json?    @map("raw_response")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  id                  String   @id @default(cuid())
+  articleId           String   @unique @map("article_id")
+  article             Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  summary             String   @db.Text
+  country             String?
+  crop                String?
+  category            String?
+  marketImpactScore   Float    @map("market_impact_score")
+  adjustedMarketScore Float    @default(0) @map("adjusted_market_score")
+  rawResponse         Json?    @map("raw_response")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
   @@index([country])
   @@index([crop])
@@ -111,23 +114,78 @@ model ArticleAnalysis {
 }
 
 model ArticleFactor {
-  id                String   @id @default(cuid())
-  articleId         String   @map("article_id")
-  article           Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  factorName        String   @map("factor_name")
-  direction         Int
-  impact            Int
-  likelihood        Int
-  duration          Float
-  reliability       Float
-  factorScore       Float    @map("factor_score")
-  evidence          String?  @db.Text
-  manualFactorScore Float?   @map("manual_factor_score")
-  createdAt         DateTime @default(now()) @map("created_at")
+  id                     String                @id @default(cuid())
+  articleId              String                @map("article_id")
+  article                Article               @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  factorName             String                @map("factor_name")
+  direction              Int
+  impact                 Int
+  likelihood             Int
+  duration               Float
+  reliability            Float
+  factorScore            Float                 @map("factor_score")
+  marketSizeWeight       Float                 @default(1) @map("market_size_weight")
+  productRelevanceWeight Float                 @default(1) @map("product_relevance_weight")
+  recencyWeight          Float                 @default(1) @map("recency_weight")
+  evidenceStrength       Float                 @default(1) @map("evidence_strength")
+  adjustedFactorScore    Float                 @default(0) @map("adjusted_factor_score")
+  evidence               String?               @db.Text
+  manualFactorScore      Float?                @map("manual_factor_score")
+  createdAt              DateTime              @default(now()) @map("created_at")
+  factorEvidence         FactorEvidence[]
+  revisions              FactorScoreRevision[]
 
   @@index([articleId])
   @@index([factorName])
   @@map("article_factors")
+}
+
+model FactorEvidence {
+  id               String         @id @default(cuid())
+  articleId        String         @map("article_id")
+  article          Article        @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  factorId         String?        @map("factor_id")
+  factor           ArticleFactor? @relation(fields: [factorId], references: [id], onDelete: SetNull)
+  factorName       String         @map("factor_name")
+  evidenceSentence String         @map("evidence_sentence") @db.Text
+  extractedByAi    Boolean        @default(true) @map("extracted_by_ai")
+  confidence       Float          @default(0.7)
+  reviewerComment  String?        @map("reviewer_comment") @db.Text
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  @@index([articleId])
+  @@index([factorId])
+  @@index([factorName])
+  @@map("factor_evidence")
+}
+
+model FactorScoreRevision {
+  id              String        @id @default(cuid())
+  articleId       String        @map("article_id")
+  factorId        String        @map("factor_id")
+  factor          ArticleFactor @relation(fields: [factorId], references: [id], onDelete: Cascade)
+  factorName      String        @map("factor_name")
+  previousValues  Json          @map("previous_values")
+  newValues       Json          @map("new_values")
+  reviewerComment String?       @map("reviewer_comment") @db.Text
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  @@index([articleId])
+  @@index([factorId])
+  @@map("factor_score_revisions")
+}
+
+model CountryBusinessWeight {
+  id                       String   @id @default(cuid())
+  country                  String   @unique
+  marketSizeWeight         Float    @default(1) @map("market_size_weight")
+  businessImportanceWeight Float    @default(1) @map("business_importance_weight")
+  notes                    String?  @db.Text
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  @@index([country])
+  @@map("country_business_weights")
 }
 
 model MarketSignal {

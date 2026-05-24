@@ -48,6 +48,12 @@ const pages = [
     decision: "AI 분석이 타당한지 보고 필요한 경우 점수 근거를 수정합니다."
   },
   {
+    name: "검토",
+    purpose: "AI가 산출한 요인 점수와 근거 문장을 사람이 확인합니다.",
+    use: "Impact, Likelihood, Duration, Reliability, 근거 문장, 국가별 사업 중요도 가중치를 수정합니다.",
+    decision: "검토된 점수만 다음 제품 영향 점수와 리포트에 반영되도록 품질을 관리합니다."
+  },
+  {
     name: "매트릭스",
     purpose: "시장 변화가 각 제품에 얼마나 민감하게 작용하는지 관리합니다.",
     use: "제품별로 재배면적, 작물 가격, 병해충 압력, 환율, 규제 등 변수 민감도를 조정합니다.",
@@ -208,8 +214,16 @@ export default function GuidePage() {
             </div>
             <div className="font-semibold text-slate-950">Market Impact Score</div>
             <div className="rounded-md bg-white p-3 font-mono text-xs text-slate-700">기사 내 모든 Factor Score 합산</div>
+            <div className="font-semibold text-slate-950">Adjusted Market Score</div>
+            <div className="rounded-md bg-white p-3 font-mono text-xs text-slate-700">
+              Factor Score × Market Size × Product Relevance × Recency × Evidence Strength
+            </div>
+            <div className="font-semibold text-slate-950">Normalized Country Score</div>
+            <div className="rounded-md bg-white p-3 font-mono text-xs text-slate-700">Country Total Score ÷ Article Count</div>
+            <div className="font-semibold text-slate-950">Weighted Country Score</div>
+            <div className="rounded-md bg-white p-3 font-mono text-xs text-slate-700">Normalized Country Score × Business Importance Weight</div>
             <div className="font-semibold text-slate-950">Product Impact Score</div>
-            <div className="rounded-md bg-white p-3 font-mono text-xs text-slate-700">Factor Score × Product Sensitivity</div>
+            <div className="rounded-md bg-white p-3 font-mono text-xs text-slate-700">Adjusted Market Score × Product Sensitivity</div>
           </div>
 
           <div className="overflow-x-auto rounded-md border">
@@ -305,6 +319,16 @@ export default function GuidePage() {
                 {DURATION_WEIGHT_RATIONALE.map((item) => (
                   <p key={item}>{item}</p>
                 ))}
+              </div>
+            </div>
+            <div className="rounded-md border bg-slate-50 p-4">
+              <div className="text-sm font-semibold text-slate-950">보정 가중치 운영 기준</div>
+              <div className="mt-2 space-y-2 text-sm leading-6 text-slate-700">
+                <p>Market Size Weight는 국가·작물·수입 규모와 우리 회사 매출 규모를 반영하는 내부 정책값입니다.</p>
+                <p>Product Relevance Weight는 대상 작물, 등록 가능 국가, 판매 가능성, 제품 포지셔닝이 맞을수록 높아집니다.</p>
+                <p>Recency Weight는 최근 기사일수록 높고, 90일 이상 지난 신호는 낮게 반영합니다.</p>
+                <p>Evidence Strength는 같은 요인을 지지하는 기사 수와 공식 출처 여부가 확인될수록 높아집니다.</p>
+                <p>Business Importance Weight는 검토 탭에서 관리자가 수정하며, 국가별 우선순위 산정에 직접 반영됩니다.</p>
               </div>
             </div>
           </div>
