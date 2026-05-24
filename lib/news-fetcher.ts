@@ -3,7 +3,6 @@ import { createDailyReport } from "@/lib/pipeline";
 import { prisma } from "@/lib/db";
 import { createArticleDuplicateKey, normalizeArticleUrl } from "@/lib/dedupe";
 import { collectFarmhannongWeeklyArticles, isFarmhannongWeeklySource } from "@/lib/farmhannong-weekly";
-import { collectRssArticles } from "@/lib/rss";
 import { ensureProductSeeds } from "@/lib/seed";
 import { analyzeAndStoreArticle } from "@/lib/pipeline";
 import type { ArticleInput, NewsFetchJobResult, NewsFetchSourceResult } from "@/lib/types";
@@ -112,10 +111,10 @@ export async function runNewsFetchJob(): Promise<NewsFetchJobResult> {
   const startedAt = new Date();
   await ensureProductSeeds();
 
-  const sources = await prisma.newsSource.findMany({
+  const sources = (await prisma.newsSource.findMany({
     where: { isActive: true },
     orderBy: { name: "asc" }
-  });
+  })).filter((source) => isFarmhannongWeeklySource(source.url, source.name));
 
   const results: NewsFetchSourceResult[] = [];
   let totalFetched = 0;
@@ -136,14 +135,7 @@ export async function runNewsFetchJob(): Promise<NewsFetchJobResult> {
     const createdArticleIds: string[] = [];
 
     try {
-      const articles = isFarmhannongWeeklySource(source.url, source.name)
-        ? await collectFarmhannongWeeklyArticles(source.url, { sourceId: source.id })
-        : await collectRssArticles(source.url, {
-            sourceId: source.id,
-            sourceName: source.name,
-            category: source.category,
-            country: source.country
-          });
+      const articles = await collectFarmhannongWeeklyArticles(source.url, { sourceId: source.id });
       sourceResult.fetched = articles.length;
 
       for (const article of articles) {

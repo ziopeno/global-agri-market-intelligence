@@ -10,7 +10,7 @@ News -> Signal -> Trend -> Insight -> Strategy
 
 ## MVP 포함 범위
 
-- 등록된 Farmhannong Weekly DB/RSS Source 기반 자동 뉴스 수집
+- Farmhannong Agro Weekly DB 기반 자동 뉴스 수집
 - URL 및 title + source 기준 중복 제거
 - Source별 fetch 실패 격리와 DB 로그 저장
 - 기사 수동 입력은 `Manual Add` 보조 기능으로 유지
@@ -171,7 +171,7 @@ OPENAI_MODEL="gpt-4.1-mini"
 
 키가 없으면 데모용 휴리스틱 분석기가 작동합니다.
 
-## Weekly DB/RSS Source 관리
+## Farmhannong Weekly DB Source 관리
 
 기본 수집 흐름은 `/sources` 화면에서 관리하는 `news_sources` 테이블을 사용합니다.
 
@@ -191,14 +191,9 @@ Source 필드:
 3. Active 체크 상태로 저장하면 다음 자동 수집부터 포함됩니다.
 4. 특정 Source를 잠시 제외하려면 Active 체크를 끕니다.
 
-Seed에는 아래 Source가 들어갑니다. Farmhannong Agro Weekly DB는 정적 HTML 안의 최신 주차 `newsDatabase`를 전용 수집기로 읽고, 나머지는 RSS로 읽습니다. 일부 매체는 정책이 바뀔 수 있으므로 `/sources`에서 URL을 수정할 수 있게 해두었습니다.
+Seed에는 Farmhannong Agro Weekly DB Source가 들어갑니다. 정적 HTML 안의 최신 주차 `newsDatabase`를 전용 수집기로 읽고, 별도 자체 검색용 RSS는 자동 수집에 사용하지 않습니다.
 
 - Farmhannong Agro Weekly DB
-- FAO News
-- USDA NASS News
-- USDA NASS Reports
-- USDA ARS Research News
-- World Grain Trade
 
 ## 자동 뉴스 수집 Job
 
@@ -210,8 +205,8 @@ POST /api/jobs/fetch-news
 
 실행 순서:
 
-1. active Weekly DB/RSS Source 조회
-2. Farmhannong Weekly DB 또는 RSS Source별 fetch
+1. active Farmhannong Agro Weekly DB Source 조회
+2. Farmhannong Weekly DB fetch
 3. 기사 title, url, published_at, source, snippet/raw content 저장
 4. 같은 URL 또는 같은 title + source 조합 중복 제외
 5. 신규 기사 AI 분석
@@ -263,7 +258,7 @@ UTC 월요일 00:10은 Asia/Seoul 기준 월요일 오전 9시 10분입니다. �
 
 해당 엔드포인트는 매주 아래 작업을 수행합니다.
 
-1. Farmhannong Agro Weekly DB 및 RSS 수집
+1. Farmhannong Agro Weekly DB 수집
 2. 중복 제거
 3. 기사 요약
 4. 시장 요인 추출

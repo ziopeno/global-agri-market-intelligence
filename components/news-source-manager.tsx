@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Trash2 } from "lucide-react";
+import { Save } from "lucide-react";
 import { ISSUE_CATEGORIES } from "@/lib/constants";
 import { formatDateTime } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -48,78 +48,12 @@ export function NewsSourceManager({ sources }: { sources: NewsSourceRow[] }) {
     if (response.ok) router.refresh();
   }
 
-  async function deleteSource(id: string) {
-    setMessage("");
-    const response = await fetch("/api/news-sources", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id })
-    });
-    setMessage(response.ok ? "Source 삭제 완료" : "Source 삭제 실패");
-    if (response.ok) router.refresh();
-  }
-
-  async function addSource(formData: FormData) {
-    setMessage("");
-    const payload = Object.fromEntries(formData.entries());
-    const response = await fetch("/api/news-sources", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...payload,
-        isActive: payload.isActive === "on"
-      })
-    });
-    setMessage(response.ok ? "Source 추가 완료" : "Source 추가 실패");
-    if (response.ok) router.refresh();
-  }
-
   return (
     <div className="space-y-5">
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          const formData = new FormData(event.currentTarget);
-          startTransition(() => addSource(formData));
-          event.currentTarget.reset();
-        }}
-        className="grid gap-3 rounded-lg border bg-slate-50 p-4 lg:grid-cols-[1fr_1.4fr_1fr_1fr_auto_auto]"
-      >
-        <div className="space-y-2">
-          <Label htmlFor="new-source-name">Name</Label>
-          <Input id="new-source-name" name="name" required placeholder="Source name" />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="new-source-url">Source URL</Label>
-          <Input id="new-source-url" name="url" type="url" required placeholder="RSS 또는 Weekly DB URL" />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="new-source-category">Category</Label>
-          <select
-            id="new-source-category"
-            name="category"
-            className="h-10 w-full rounded-md border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">자동 분류</option>
-            {ISSUE_CATEGORIES.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="new-source-country">Country</Label>
-          <Input id="new-source-country" name="country" placeholder="Global" />
-        </div>
-        <label className="flex items-end gap-2 pb-2 text-sm text-slate-700">
-          <input name="isActive" type="checkbox" defaultChecked className="h-4 w-4 rounded border-slate-300" />
-          Active
-        </label>
-        <div className="flex items-end">
-          <Button type="submit" disabled={isPending}>Add</Button>
-        </div>
-      </form>
+      <div className="rounded-lg border bg-emerald-50 p-4 text-sm leading-6 text-emerald-950">
+        자동 수집 Source는 Farmhannong Agro Weekly DB 하나로 고정되어 있습니다.
+        별도 자체 검색용 RSS Source는 추가하지 않습니다.
+      </div>
 
       {message && <div className="text-sm text-slate-600">{message}</div>}
 
@@ -168,9 +102,6 @@ export function NewsSourceManager({ sources }: { sources: NewsSourceRow[] }) {
                 <div className="flex items-end gap-2">
                   <Button type="button" size="icon" variant="secondary" onClick={() => startTransition(() => saveSource(source.id))}>
                     <Save className="h-4 w-4" />
-                  </Button>
-                  <Button type="button" size="icon" variant="ghost" onClick={() => startTransition(() => deleteSource(source.id))}>
-                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>

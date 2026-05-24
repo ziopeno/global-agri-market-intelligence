@@ -13,6 +13,8 @@ const LEGACY_BROKEN_SOURCE_NAMES = [
   "Successful Farming"
 ];
 
+const FARMHANNONG_WEEKLY_SOURCE_NAME = "Farmhannong Agro Weekly DB";
+
 export async function ensureProductSeeds() {
   if (productSeedsReady) return;
 
@@ -114,8 +116,18 @@ export async function ensureNewsSourceSeeds() {
   }
 
   await prisma.newsSource.updateMany({
-    where: { name: { in: LEGACY_BROKEN_SOURCE_NAMES } },
+    where: {
+      OR: [
+        { name: { in: LEGACY_BROKEN_SOURCE_NAMES } },
+        { name: { not: FARMHANNONG_WEEKLY_SOURCE_NAME } }
+      ]
+    },
     data: { isActive: false }
+  });
+
+  await prisma.newsSource.updateMany({
+    where: { name: FARMHANNONG_WEEKLY_SOURCE_NAME },
+    data: { isActive: true }
   });
 
   newsSourceSeedsReady = true;

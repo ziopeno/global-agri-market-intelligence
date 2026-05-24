@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { isFarmhannongWeeklySource } from "@/lib/farmhannong-weekly";
 
 export const dynamic = "force-dynamic";
 
@@ -24,10 +25,15 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const body = await request.json();
+  const name = String(body.name || "Untitled source");
+  const url = String(body.url);
+  if (!isFarmhannongWeeklySource(url, name)) {
+    return NextResponse.json({ error: "Only Farmhannong Agro Weekly DB source is allowed." }, { status: 400 });
+  }
   const source = await prisma.newsSource.create({
     data: {
-      name: String(body.name || "Untitled source"),
-      url: String(body.url),
+      name,
+      url,
       category: body.category ? String(body.category) : null,
       country: body.country ? String(body.country) : null,
       isActive: body.isActive === undefined ? true : Boolean(body.isActive)
@@ -39,6 +45,14 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   const body = await request.json();
+  const current = await prisma.newsSource.findUnique({
+    where: { id: String(body.id) }
+  });
+  const nextName = body.name === undefined ? current?.name : String(body.name);
+  const nextUrl = body.url === undefined ? current?.url : String(body.url);
+  if (!nextUrl || !isFarmhannongWeeklySource(nextUrl, nextName)) {
+    return NextResponse.json({ error: "Only Farmhannong Agro Weekly DB source is allowed." }, { status: 400 });
+  }
   const source = await prisma.newsSource.update({
     where: { id: String(body.id) },
     data: {

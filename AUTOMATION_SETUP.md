@@ -1,6 +1,6 @@
 # 자동 뉴스 수집 운영 설정
 
-이 문서는 매주 월요일 오전 9시 10분(Asia/Seoul)에 Farmhannong Agro Weekly DB와 RSS 뉴스 수집, 중복 제거, AI 분석, Daily Report 업데이트가 자동으로 실행되도록 준비하는 절차입니다.
+이 문서는 매주 월요일 오전 9시 10분(Asia/Seoul)에 Farmhannong Agro Weekly DB 수집, 중복 제거, AI 분석, Daily Report 업데이트가 자동으로 실행되도록 준비하는 절차입니다.
 
 ## 이미 코드에 준비된 것
 
@@ -26,8 +26,6 @@ DATABASE_URL="postgresql://..."
 OPENAI_API_KEY="..."
 OPENAI_MODEL="gpt-4.1-mini"
 OPENAI_TIMEOUT_MS="30000"
-RSS_MAX_ITEMS_PER_SOURCE="5"
-RSS_FETCH_TIMEOUT_MS="8000"
 CRON_SECRET="16자_이상의_랜덤_문자열"
 APP_BASE_URL="https://배포주소"
 ```
@@ -37,9 +35,6 @@ APP_BASE_URL="https://배포주소"
 - `DATABASE_URL`: 기사, 분석 결과, 리포트, 로그를 저장할 PostgreSQL 연결 문자열입니다.
 - `OPENAI_API_KEY`: 실제 AI 요약과 요인 추출을 위해 필요합니다.
 - `CRON_SECRET`: 외부에서 자동화 API를 임의 호출하지 못하도록 보호하는 실행 키입니다.
-- `RSS_MAX_ITEMS_PER_SOURCE`: 한 번의 실행에서 Source별로 가져올 최대 기사 수입니다. 초기 운영은 `5`를 권장합니다.
-- `RSS_FETCH_TIMEOUT_MS`: Source별 RSS 응답 대기 시간입니다. 특정 Source가 느려도 전체 작업이 오래 멈추지 않게 합니다.
-
 `OPENAI_API_KEY`가 없으면 데모용 휴리스틱 분석으로 동작하지만, 실제 운영 품질은 OpenAI API 연결이 필요합니다.
 
 ## DB 초기화
@@ -52,7 +47,7 @@ pnpm db:push
 pnpm db:seed
 ```
 
-`db:seed`는 기본 제품, 제품 민감도, 샘플 기사, 초기 Weekly DB/RSS Source를 생성합니다.
+`db:seed`는 기본 제품, 제품 민감도, 샘플 기사, Farmhannong Agro Weekly DB Source를 생성합니다.
 
 ## 자동화 준비상태 확인
 
@@ -66,7 +61,7 @@ pnpm automation:check
 - `CRON_SECRET`
 - `OPENAI_API_KEY`
 - PostgreSQL 연결
-- Weekly DB/RSS Source seed 데이터
+- Farmhannong Agro Weekly DB Source seed 데이터
 - Active Source 개수
 
 `FAIL`이 있으면 자동 수집 운영 전에 해결해야 합니다. `WARN`은 운영 품질에 영향을 줄 수 있는 권장 보완 항목입니다.
@@ -117,13 +112,13 @@ Vercel에 `CRON_SECRET` 환경변수를 설정하면 Vercel이 자동 호출 시
 
 1. `/sources` 화면에서 최근 Fetch 로그를 확인합니다.
 2. 신규 기사, 중복 제외, 분석 완료 건수를 확인합니다.
-3. 실패 Source가 있으면 URL 변경, RSS 접근 제한, Weekly DB 또는 feed 형식 오류를 점검합니다.
+3. 실패 Source가 있으면 URL 변경, Weekly DB 형식 오류를 점검합니다.
 4. `/news`에서 신규 기사와 AI 분석 상태를 확인합니다.
 5. `/reports`에서 Daily Report가 업데이트되었는지 확인합니다.
 
 ## 관리 원칙
 
-- Source는 너무 많이 넣기보다 신뢰도 높은 Weekly DB/RSS Source부터 운영합니다.
+- 자동 수집 Source는 Farmhannong Agro Weekly DB만 사용합니다.
 - Source별 실패는 전체 작업을 멈추지 않으므로, 로그를 보고 개별 Source만 조정합니다.
 - 제품 민감도는 사업부 합의값으로 관리합니다.
 - AI 점수는 근거와 함께 검토하고, 중요한 기사일수록 사람이 수정합니다.

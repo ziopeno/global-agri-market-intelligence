@@ -13,6 +13,8 @@ import { formatDateTime, formatScore, scoreTone } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+const FARMHANNONG_AGRO_WEEKLY_URL = "https://ziopeno.github.io/farmhannong-agro-weekly-db/";
+
 function factorScoreValue(factor: any) {
   return Number(factor.manualFactorScore ?? factor.factorScore ?? 0);
 }
@@ -81,6 +83,19 @@ function parseWeeklyCardContent(article: any) {
   };
 }
 
+function weeklyCardWeekDate(article: any) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date(article.publishedAt));
+}
+
+function weeklyCardUrl(weekDate: string) {
+  return `${FARMHANNONG_AGRO_WEEKLY_URL}#${weekDate}`;
+}
+
 function strongestFactor(factors: any[]) {
   return [...factors].sort((a, b) => Math.abs(factorScoreValue(b)) - Math.abs(factorScoreValue(a)))[0] || null;
 }
@@ -133,6 +148,7 @@ function WeeklyCardAnalysis({ article, relatedProducts, marketImpactReason }: {
   const factor = strongestFactor(article.factors || []);
   const product = topProductImpact(article.productImpacts || []);
   const strategy = farmhannongStrategy(article);
+  const weekDate = weeklyCardWeekDate(article);
 
   return (
     <div className="mt-4 border-t border-dashed pt-4">
@@ -144,7 +160,19 @@ function WeeklyCardAnalysis({ article, relatedProducts, marketImpactReason }: {
       <div className="rounded-md border-2 border-emerald-700 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-100 bg-emerald-50 px-4 py-3">
           <div className="text-sm font-black text-emerald-800">Farmhannong Agro Weekly Card News</div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-md border border-emerald-200 bg-white px-2.5 py-1 text-xs font-bold text-emerald-800">
+              {weekDate} 주차
+            </span>
+            <a
+              href={weeklyCardUrl(weekDate)}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-emerald-300 bg-white px-2.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50"
+            >
+              해당 주차 Agro Weekly
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
             {card.company && <Badge tone="slate">{card.company}</Badge>}
             {article.country && <Badge tone="blue">{article.country}</Badge>}
             {article.category && <Badge tone="amber">{article.category}</Badge>}
@@ -244,7 +272,7 @@ export default async function NewsPage() {
         <Card>
           <CardHeader>
             <CardTitle>자동 뉴스 수집</CardTitle>
-            <CardDescription>등록된 active Weekly DB/RSS source {activeSourceCount}개를 순회해 신규 기사만 저장하고 AI 분석까지 실행합니다.</CardDescription>
+            <CardDescription>Farmhannong Agro Weekly DB를 기준으로 신규 카드뉴스만 저장하고 AI 분석까지 실행합니다.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap items-center gap-3">
             <Link
@@ -253,7 +281,7 @@ export default async function NewsPage() {
             >
               News Sources 관리
             </Link>
-            <span className="text-sm text-slate-500">기본 흐름은 Farmhannong Weekly DB와 RSS 자동 수집입니다.</span>
+            <span className="text-sm text-slate-500">기본 흐름은 Farmhannong Agro Weekly DB 연계입니다. 별도 자체 검색 RSS는 사용하지 않습니다.</span>
           </CardContent>
         </Card>
         <Card>

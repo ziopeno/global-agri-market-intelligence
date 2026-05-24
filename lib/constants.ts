@@ -330,54 +330,5 @@ export const NEWS_SOURCE_SEEDS = [
     category: "농약/비료 시장",
     country: "Global",
     isActive: true
-  },
-  {
-    name: "FAO News",
-    url: "https://www.fao.org/feeds/fao-newsroom-rss",
-    category: "농산물 수급",
-    country: "Global",
-    isActive: true
-  },
-  {
-    name: "USDA News",
-    url: "https://www.usda.gov/rss/latest-releases.xml",
-    category: "정부 정책",
-    country: "United States",
-    isActive: false
-  },
-  {
-    name: "USDA NASS News",
-    url: "https://www.nass.usda.gov/rss/news.xml",
-    category: "재배면적",
-    country: "United States",
-    isActive: true
-  },
-  {
-    name: "USDA NASS Reports",
-    url: "https://www.nass.usda.gov/rss/reports.xml",
-    category: "농산물 가격",
-    country: "United States",
-    isActive: true
-  },
-  {
-    name: "USDA ARS Research News",
-    url: "https://www.ars.usda.gov/rss/?productName=Research+News",
-    category: "병해충/잡초 발생",
-    country: "United States",
-    isActive: true
-  },
-  {
-    name: "USDA Rural Development",
-    url: "https://www.rd.usda.gov/rss.xml",
-    category: "정부 정책",
-    country: "United States",
-    isActive: false
-  },
-  {
-    name: "World Grain Trade",
-    url: "https://www.world-grain.com/rss/topic/1034-trade",
-    category: "농산물 수급",
-    country: "Global",
-    isActive: true
   }
 ] as const;
