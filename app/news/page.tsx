@@ -20,60 +20,8 @@ function factorScoreValue(factor: any) {
 function signedFormula(factor: any) {
   const direction = Number(factor.direction || 0);
   const sign = direction > 0 ? "+1" : "-1";
-  return `${sign} x ${factor.impact} x ${factor.likelihood} x ${factor.duration} x ${factor.reliability}`;
-}
-
-function levelLabel(value: number) {
-  if (value >= 5) return "매우 높음";
-  if (value >= 4) return "높음";
-  if (value >= 3) return "보통";
-  if (value >= 2) return "낮음";
-  return "매우 낮음";
-}
-
-function impactLogic(value: number) {
-  if (value >= 5) return "여러 국가·작물·제품군에 동시에 영향을 줄 수 있어 매우 높게 봤습니다.";
-  if (value >= 4) return "가격, 공급, 규제, 생산능력처럼 시장을 직접 움직이는 변수라 높게 봤습니다.";
-  if (value >= 3) return "시장 변수와 연결되지만 영향 범위가 특정 지역·제품에 머물러 보통으로 봤습니다.";
-  if (value >= 2) return "시장과 관련은 있으나 직접적인 판매·수요 영향은 제한적으로 봤습니다.";
-  return "시장 영향이 아직 간접적이거나 기사 근거가 제한적이라 낮게 봤습니다.";
-}
-
-function likelihoodLogic(value: number) {
-  if (value >= 5) return "이미 발생했거나 공식 발표·확정 정보에 가까워 매우 높게 봤습니다.";
-  if (value >= 4) return "구체적 발표, 수치, 실행 일정이 있어 발생 가능성을 높게 봤습니다.";
-  if (value >= 3) return "가능성은 확인되지만 전망·관측 성격이 있어 보통으로 봤습니다.";
-  if (value >= 2) return "초기 신호 수준이라 실제 시장 변화로 이어질지는 낮게 봤습니다.";
-  return "추정 또는 불확실한 언급에 가까워 가능성을 매우 낮게 봤습니다.";
-}
-
-function directionLogic(value: number) {
-  return value >= 0
-    ? "수요 확대, 공급 안정, 가격 개선 등 기회 방향으로 해석했습니다."
-    : "수요 위축, 공급 차질, 비용 증가, 규제 강화 등 리스크 방향으로 해석했습니다.";
-}
-
-function durationLogic(value: number) {
-  if (value >= 1.6) return "구조 변화나 규제·설비·재배면적처럼 장기 영향 가능성이 있어 장기로 봤습니다.";
-  if (value >= 1.3) return "한 시즌 또는 몇 달 이상 이어질 수 있어 중기로 봤습니다.";
-  return "단기 뉴스 또는 즉시성 이슈라 단기로 봤습니다.";
-}
-
-function reliabilityLogic(value: number) {
-  if (value >= 1) return "정부·공식기관·국제기구급 출처라 신뢰도를 가장 높게 반영했습니다.";
-  if (value >= 0.8) return "주요 언론·전문지 출처라 비교적 높은 신뢰도로 반영했습니다.";
-  if (value >= 0.6) return "업계지·기업 발표 성격이라 중간 신뢰도로 반영했습니다.";
-  return "출처 검증이 제한적이라 낮은 신뢰도로 반영했습니다.";
-}
-
-function factorLogicLines(factor: any) {
-  return [
-    `방향: ${directionLogic(Number(factor.direction || 0))}`,
-    `Impact ${factor.impact}/5 (${levelLabel(Number(factor.impact || 0))}): ${impactLogic(Number(factor.impact || 0))}`,
-    `Likelihood ${factor.likelihood}/5 (${levelLabel(Number(factor.likelihood || 0))}): ${likelihoodLogic(Number(factor.likelihood || 0))}`,
-    `기간 보정 ${factor.duration}: ${durationLogic(Number(factor.duration || 0))}`,
-    `출처 신뢰도 ${factor.reliability}: ${reliabilityLogic(Number(factor.reliability || 0))}`
-  ];
+  const reliability = Number(factor.reliability || 0).toFixed(1);
+  return `${sign} x Impact ${factor.impact} x Likelihood ${factor.likelihood} x Duration ${factor.duration} x Reliability ${reliability}x`;
 }
 
 function buildMarketImpactReason(article: any) {
@@ -93,7 +41,7 @@ function buildMarketImpactReason(article: any) {
 
   return {
     total,
-    formula: "아래 점수는 기사 근거를 기준으로 영향 범위(Impact)와 발생 확실성(Likelihood)을 먼저 판단하고, 기간과 출처 신뢰도로 보정한 결과입니다.",
+    formula: "기사에서 추출된 핵심 요인과 근거입니다. Impact와 Likelihood의 1~5점 기준, Reliability 보정계수 기준은 사용법 탭에서 확인할 수 있습니다.",
     topFactors
   };
 }
@@ -271,11 +219,6 @@ export default async function NewsPage() {
                               </span>
                             </div>
                             <p className="mt-1 text-slate-600">근거: {factor.evidence || "AI가 기사 제목/본문에서 해당 시장 요인을 추출했습니다."}</p>
-                            <div className="mt-2 space-y-1 text-slate-600">
-                              {factorLogicLines(factor).map((line) => (
-                                <p key={line}>{line}</p>
-                              ))}
-                            </div>
                           </div>
                         ))}
                       </div>
