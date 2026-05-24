@@ -97,6 +97,21 @@ function normalizeTitle(title: string) {
   return title.replace(/^\d+\.\s*/, "").trim();
 }
 
+function selectedWeekDates(database: FarmhannongWeeklyDatabase) {
+  const sortedDates = Object.keys(database).sort().reverse();
+  const configuredDates = (process.env.WEEKLY_CARD_NEWS_DATES || "")
+    .split(",")
+    .map((date) => date.trim())
+    .filter(Boolean);
+
+  if (configuredDates.length) {
+    return configuredDates.filter((date) => database[date]?.length);
+  }
+
+  const lookbackWeeks = Math.max(1, Math.min(12, Number(process.env.WEEKLY_CARD_NEWS_LOOKBACK_WEEKS || 3)));
+  return sortedDates.slice(0, lookbackWeeks);
+}
+
 export function isFarmhannongWeeklySource(url: string, sourceName?: string | null) {
   return (
     url.includes("ziopeno.github.io/farmhannong-agro-weekly-db") ||
@@ -128,27 +143,32 @@ export async function collectFarmhannongWeeklyArticles(
 
   const html = await response.text();
   const database = extractNewsDatabase(html);
-  const latestDate = Object.keys(database).sort().reverse()[0];
-  const items = latestDate ? database[latestDate] || [] : [];
-  const maxItems = Math.max(1, Math.min(50, Number(process.env.WEEKLY_CARD_NEWS_MAX_ITEMS || 30)));
+  const weekDates = selectedWeekDates(database);
+  const maxItemsPerWeek = Math.max(
+    1,
+    Math.min(50, Number(process.env.WEEKLY_CARD_NEWS_MAX_ITEMS_PER_WEEK || process.env.WEEKLY_CARD_NEWS_MAX_ITEMS || 30))
+  );
 
-  return items.slice(0, maxItems).map((item, index) => {
-    const title = normalizeTitle(item.title || item.raw_title || `Farmhannong Weekly item ${index + 1}`);
-    const source = item.source || "Farmhannong Agro Weekly";
-    const originalText = buildArticleText(item) || title;
-    const urlForArticle = item.link || `${url}#${latestDate}-${index + 1}`;
+  return weekDates.flatMap((weekDate) => {
+    const items = database[weekDate] || [];
+    return items.slice(0, maxItemsPerWeek).map((item, index) => {
+      const title = normalizeTitle(item.title || item.raw_title || `Farmhannong Weekly item ${index + 1}`);
+      const source = item.source || "Farmhannong Agro Weekly";
+      const originalText = buildArticleText(item) || title;
+      const urlForArticle = item.link || `${url}#${weekDate}-${index + 1}`;
 
-    return {
-      title,
-      source,
-      sourceId: options?.sourceId || null,
-      url: urlForArticle,
-      publishedAt: latestDate ? new Date(`${latestDate}T09:00:00+09:00`).toISOString() : new Date().toISOString(),
-      country: item.country || null,
-      category: categoryFromTag(item.tag),
-      originalText,
-      rawContent: originalText,
-      fetchedAt: new Date().toISOString()
-    };
+      return {
+        title,
+        source,
+        sourceId: options?.sourceId || null,
+        url: urlForArticle,
+        publishedAt: new Date(`${weekDate}T09:00:00+09:00`).toISOString(),
+        country: item.country || null,
+        category: categoryFromTag(item.tag),
+        originalText,
+        rawContent: originalText,
+        fetchedAt: new Date().toISOString()
+      };
+    });
   });
 }
