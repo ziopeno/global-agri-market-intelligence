@@ -22,8 +22,8 @@ async function runScheduledPipeline() {
   console.log(`[automation] daily pipeline complete`, result);
 }
 
-cron.schedule("0 8 * * *", runScheduledPipeline, {
+cron.schedule("0 9 * * 1", runScheduledPipeline, {
   timezone: "Asia/Seoul"
 });
 
-console.log("[automation] scheduler started: daily 08:00 Asia/Seoul");
+console.log("[automation] scheduler started: weekly Monday 09:00 Asia/Seoul");

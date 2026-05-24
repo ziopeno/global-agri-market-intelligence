@@ -1,12 +1,12 @@
 # 자동 뉴스 수집 운영 설정
 
-이 문서는 매일 오전 8시(Asia/Seoul)에 RSS 뉴스 수집, 중복 제거, AI 분석, Daily Report 업데이트가 자동으로 실행되도록 준비하는 절차입니다.
+이 문서는 매주 월요일 오전 9시(Asia/Seoul)에 RSS 뉴스 수집, 중복 제거, AI 분석, Daily Report 업데이트가 자동으로 실행되도록 준비하는 절차입니다.
 
 ## 이미 코드에 준비된 것
 
 - 자동 실행 API: `GET/POST /api/jobs/fetch-news`
 - Vercel Cron 설정: `vercel.json`
-- 실행 시간: UTC `23:00`, Asia/Seoul `08:00`
+- 실행 시간: UTC 월요일 `00:00`, Asia/Seoul 월요일 `09:00`
 - Source별 에러 격리와 fetch log 저장
 - URL 또는 `title + source` 기준 중복 제거
 - 신규 기사 AI 분석
@@ -102,13 +102,13 @@ curl -X POST "https://배포주소/api/jobs/fetch-news?secret=CRON_SECRET값"
   "crons": [
     {
       "path": "/api/jobs/fetch-news",
-      "schedule": "0 23 * * *"
+      "schedule": "0 0 * * 1"
     }
   ]
 }
 ```
 
-Vercel Cron은 UTC 기준으로 동작합니다. `0 23 * * *`는 Asia/Seoul 기준 매일 오전 8시입니다.
+Vercel Cron은 UTC 기준으로 동작합니다. `0 0 * * 1`은 Asia/Seoul 기준 매주 월요일 오전 9시입니다.
 
 Vercel에 `CRON_SECRET` 환경변수를 설정하면 Vercel이 자동 호출 시 `Authorization: Bearer <CRON_SECRET>` 헤더를 붙입니다. API는 이 헤더 또는 `?secret=` query 값을 검증합니다.
 

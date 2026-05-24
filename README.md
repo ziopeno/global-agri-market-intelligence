@@ -251,18 +251,18 @@ curl -X POST "http://localhost:3000/api/jobs/fetch-news?secret=change-me"
 
 ## Cron 설정
 
-Vercel Cron은 GET 요청을 보내므로 `vercel.json`은 `/api/jobs/fetch-news`를 매일 UTC 23:00에 호출합니다.
+Vercel Cron은 GET 요청을 보내므로 `vercel.json`은 `/api/jobs/fetch-news`를 매주 월요일 UTC 00:00에 호출합니다.
 
 ```json
 {
   "path": "/api/jobs/fetch-news",
-  "schedule": "0 23 * * *"
+  "schedule": "0 0 * * 1"
 }
 ```
 
-UTC 23:00은 Asia/Seoul 기준 다음 날 오전 8시입니다. API는 `POST /api/jobs/fetch-news`를 중심으로 제공하고, Vercel Cron 호환을 위해 같은 경로의 GET도 허용합니다.
+UTC 월요일 00:00은 Asia/Seoul 기준 월요일 오전 9시입니다. API는 `POST /api/jobs/fetch-news`를 중심으로 제공하고, Vercel Cron 호환을 위해 같은 경로의 GET도 허용합니다.
 
-해당 엔드포인트는 매일 아래 작업을 수행합니다.
+해당 엔드포인트는 매주 아래 작업을 수행합니다.
 
 1. RSS 수집
 2. 중복 제거
@@ -270,10 +270,10 @@ UTC 23:00은 Asia/Seoul 기준 다음 날 오전 8시입니다. API는 `POST /ap
 4. 시장 요인 추출
 5. 점수화
 6. 제품 영향 계산
-
-운영 준비 절차는 `AUTOMATION_SETUP.md`에 별도로 정리되어 있습니다.
 7. Daily Report 생성
 8. 대시보드 데이터 갱신
+
+운영 준비 절차는 `AUTOMATION_SETUP.md`에 별도로 정리되어 있습니다.
 
 `/api/cron/daily`도 호환용으로 남겨두었고, 내부적으로 같은 자동 수집 Job을 호출한 뒤 한국시간 기준 월요일, 월초, 분기초, 1월/7월 1일, 1월 1일이면 상위 리포트도 함께 생성합니다.
 

@@ -271,12 +271,12 @@ export default function GuidePage() {
               <CalendarClock className="h-4 w-4 text-slate-700" />
               자동화 운영
             </CardTitle>
-            <CardDescription>매일 오전 8시 기준으로 Daily 흐름을 갱신합니다.</CardDescription>
+            <CardDescription>매주 월요일 오전 9시 기준으로 자동 수집 흐름을 갱신합니다.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm leading-6 text-slate-700">
             <p>자동 실행 API는 POST /api/jobs/fetch-news입니다.</p>
-            <p>Vercel Cron은 Asia/Seoul 오전 8시에 맞추기 위해 UTC 23:00 기준으로 설정합니다.</p>
-            <div className="rounded-md border bg-slate-50 p-3 font-mono text-xs">0 23 * * *</div>
+            <p>Vercel Cron은 Asia/Seoul 월요일 오전 9시에 맞추기 위해 UTC 월요일 00:00 기준으로 설정합니다.</p>
+            <div className="rounded-md border bg-slate-50 p-3 font-mono text-xs">0 0 * * 1</div>
             <p>수동으로 즉시 실행하려면 소스 또는 뉴스 화면의 Run News Fetch Now 버튼을 사용합니다.</p>
           </CardContent>
         </Card>

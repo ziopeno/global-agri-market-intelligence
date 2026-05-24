@@ -45,7 +45,7 @@ export default async function SourcesPage() {
         <Card>
           <CardHeader>
             <CardTitle>News Sources</CardTitle>
-            <CardDescription>등록된 active RSS source가 매일 자동 수집의 기준입니다.</CardDescription>
+            <CardDescription>등록된 active RSS source가 매주 월요일 자동 수집의 기준입니다.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-3">
