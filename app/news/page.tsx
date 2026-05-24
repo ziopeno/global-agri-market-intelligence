@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArticleForm } from "@/components/article-form";
+import { CollapsiblePanel } from "@/components/collapsible-panel";
 import { NewsFetchButton } from "@/components/news-fetch-button";
 import { NewsPeriodWorkspace } from "@/components/news-period-workspace";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,15 +79,9 @@ export default async function NewsPage() {
         </Card>
       </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Manual Add</CardTitle>
-          <CardDescription>수동 입력은 자동 수집에서 누락된 기사 보완용입니다.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ArticleForm />
-        </CardContent>
-      </Card>
+      <CollapsiblePanel title="Manual Add" description="수동 입력은 자동 수집에서 누락된 기사 보완용입니다.">
+        <ArticleForm />
+      </CollapsiblePanel>
 
       <NewsPeriodWorkspace articles={serializedArticles} />
     </div>

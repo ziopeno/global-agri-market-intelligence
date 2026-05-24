@@ -31,11 +31,7 @@ export function ArticleForm() {
   }
 
   return (
-    <div className="rounded-lg border bg-slate-50 p-4">
-      <div className="mb-4">
-        <div className="font-semibold text-slate-950">Manual Add</div>
-        <p className="mt-1 text-sm text-slate-500">자동 수집에서 빠진 기사만 보조로 입력합니다.</p>
-      </div>
+    <div className="rounded-md bg-slate-50 p-4">
       <form
         onSubmit={(event) => {
           event.preventDefault();

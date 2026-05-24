@@ -8,7 +8,13 @@ import { AnalyzeButton } from "@/components/analyze-button";
 import { FactorScoreEditor } from "@/components/factor-score-editor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatDateTime, formatScore, scoreTone } from "@/lib/utils";
+import {
+  DURATION_SCORE_CRITERIA,
+  IMPACT_SCORE_CRITERIA,
+  LIKELIHOOD_SCORE_CRITERIA,
+  RELIABILITY_SCORE_CRITERIA
+} from "@/lib/constants";
+import { cn, formatDateTime, formatScore, scoreTone } from "@/lib/utils";
 
 const FARMHANNONG_AGRO_WEEKLY_URL = "https://ziopeno.github.io/farmhannong-agro-weekly-db/";
 
@@ -40,6 +46,106 @@ function signedFormula(factor: any) {
   return `${sign} x Impact ${factor.impact} x Likelihood ${factor.likelihood} x Duration ${factor.duration} x Reliability ${reliability}x`;
 }
 
+const FACTOR_KEYWORDS: Record<string, string[]> = {
+  "벼 재배면적": ["rice", "paddy", "area", "acreage", "planting", "재배면적", "벼"],
+  "대두 재배면적": ["soybean", "soy", "area", "acreage", "planting", "대두"],
+  "옥수수 재배면적": ["corn", "maize", "area", "acreage", "planting", "옥수수"],
+  "작물 가격": ["price", "futures", "commodity", "가격", "선물"],
+  "농가 소득": ["income", "margin", "profit", "소득", "마진", "수익"],
+  "병해충 압력": ["pest", "disease", "insect", "fungus", "병해충", "해충", "병"],
+  "잡초 압력": ["weed", "herbicide", "resistance", "잡초", "저항성"],
+  홍수: ["flood", "rain", "waterlogging", "홍수", "폭우", "침수"],
+  가뭄: ["drought", "dry", "heat", "가뭄", "고온"],
+  "정부 보조금": ["subsidy", "support", "government", "보조금", "지원"],
+  "수입 규제": ["import", "export", "tariff", "quota", "규제", "수입", "수출"],
+  환율: ["currency", "exchange", "dollar", "환율", "통화"],
+  "원제 가격": ["active ingredient", "technical", "raw material", "원제", "원료"],
+  "경쟁 제품 출시": ["competitor", "launch", "new product", "경쟁", "출시"],
+  "등록 규제": ["registration", "regulatory", "approval", "ban", "mrl", "등록", "규제"]
+};
+
+function compactText(value: string | null | undefined, maxLength = 128) {
+  const text = String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return "";
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1)}...` : text;
+}
+
+function sentenceCandidates(text: string) {
+  return text
+    .split(/(?<=[.!?。])\s+|\n|•/)
+    .map((line) => compactText(line, 160))
+    .filter(Boolean);
+}
+
+function sourceExcerptForFactor(article: ArticleRow, factor: any) {
+  const card = parseWeeklyCardContent(article);
+  const textPool = [
+    card.rawSummary,
+    card.cardSummary,
+    article.originalText,
+    article.rawContent,
+    article.summary,
+    article.title
+  ].filter(Boolean);
+  const keywords = FACTOR_KEYWORDS[factor.factorName] || [factor.factorName];
+
+  for (const text of textPool) {
+    const match = sentenceCandidates(text).find((sentence) =>
+      keywords.some((keyword) => sentence.toLowerCase().includes(keyword.toLowerCase()))
+    );
+    if (match) return match;
+  }
+
+  return compactText(textPool[0] || factor.evidence || article.title, 128);
+}
+
+function translatedEvidenceForFactor(article: ArticleRow, factor: any) {
+  const card = parseWeeklyCardContent(article);
+  return compactText(factor.evidence || card.bullets[0] || card.cardSummary || article.summary || article.title, 128);
+}
+
+function criteriaText<T extends readonly { score: number; criterion: string }[]>(rows: T, score: number) {
+  return rows.find((row) => Number(row.score) === Number(score))?.criterion || "정의된 기준에 맞춰 판단했습니다.";
+}
+
+function scoreBreakdownRows(article: ArticleRow, factor: any) {
+  const excerpt = sourceExcerptForFactor(article, factor);
+  const translated = translatedEvidenceForFactor(article, factor);
+  const direction = Number(factor.direction || 0);
+  const reliabilitySource = compactText(article.newsSource?.name || article.source, 80);
+  const directionMeaning = direction > 0 ? "시장 기회 또는 수요 확대 방향" : "시장 리스크 또는 수요 둔화 방향";
+
+  return [
+    {
+      label: "Direction",
+      value: direction > 0 ? "+1" : "-1",
+      text: `원문 "${excerpt}" → 번역/해석 "${translated}" → ${directionMeaning}으로 판단했습니다.`
+    },
+    {
+      label: "Impact",
+      value: `${Number(factor.impact || 0)}점`,
+      text: `원문 "${excerpt}" → 번역/해석 "${translated}" → ${criteriaText(IMPACT_SCORE_CRITERIA, Number(factor.impact || 0))}`
+    },
+    {
+      label: "Likelihood",
+      value: `${Number(factor.likelihood || 0)}점`,
+      text: `원문 "${excerpt}" → 번역/해석 "${translated}" → ${criteriaText(LIKELIHOOD_SCORE_CRITERIA, Number(factor.likelihood || 0))}`
+    },
+    {
+      label: "Duration",
+      value: `${Number(factor.duration || 0).toFixed(1)}x`,
+      text: `원문 "${excerpt}" → 번역/해석 "${translated}" → ${criteriaText(DURATION_SCORE_CRITERIA, Number(factor.duration || 0))}`
+    },
+    {
+      label: "Reliability",
+      value: `${Number(factor.reliability || 0).toFixed(1)}x`,
+      text: `출처 "${reliabilitySource}" → 원문 일부 "${excerpt}" → ${criteriaText(RELIABILITY_SCORE_CRITERIA, Number(factor.reliability || 0))}`
+    }
+  ];
+}
+
 function buildMarketImpactReason(article: ArticleRow) {
   const factors = article.factors || [];
   if (!factors.length) {
@@ -57,7 +163,7 @@ function buildMarketImpactReason(article: ArticleRow) {
 
   return {
     total,
-    formula: "기사에서 추출된 핵심 요인과 근거입니다. Impact와 Likelihood의 1~5점 기준, Reliability 보정계수 기준은 사용법 탭에서 확인할 수 있습니다.",
+    formula: "각 항목은 원문 일부와 번역/해석을 기준으로 사용법 탭의 정량 구간에 맞춰 판단했습니다.",
     topFactors
   };
 }
@@ -478,7 +584,7 @@ function ArticleCard({
   const weeklyCardArticle = isWeeklyCardArticle(article);
 
   return (
-    <article id={`article-${article.id}`} className="scroll-mt-64 rounded-lg border bg-white p-4">
+    <article id={`article-${article.id}`} className="scroll-mt-6 rounded-lg border bg-white p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone="blue">{article.source}</Badge>
@@ -581,7 +687,13 @@ function ArticleCard({
                     {signedFormula(factor)} = {formatScore(factorScoreValue(factor))}
                   </span>
                 </div>
-                <p className="mt-1 text-slate-600">근거: {factor.evidence || "AI가 기사 제목/본문에서 해당 시장 요인을 추출했습니다."}</p>
+                <div className="mt-2 space-y-1">
+                  {scoreBreakdownRows(article, factor).map((row) => (
+                    <p key={row.label} className="text-slate-600">
+                      <span className="font-semibold text-slate-900">{row.label} {row.value}:</span> {row.text}
+                    </p>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
@@ -599,6 +711,7 @@ function ArticleCard({
 }
 
 export function NewsPeriodWorkspace({ articles }: { articles: ArticleRow[] }) {
+  const [isListOpen, setIsListOpen] = useState(false);
   const [periodType, setPeriodType] = useState<PeriodType>("week");
   const periodOptions = useMemo(() => buildPeriodOptions(articles, periodType), [articles, periodType]);
   const [selectedPeriodKey, setSelectedPeriodKey] = useState("");
@@ -650,174 +763,184 @@ export function NewsPeriodWorkspace({ articles }: { articles: ArticleRow[] }) {
   }
 
   return (
-    <section className="space-y-4">
-      <div className="sticky top-[64px] z-30 rounded-md border bg-white/95 p-4 shadow-sm backdrop-blur">
-        <div className="grid gap-4 lg:grid-cols-[1.45fr_0.95fr]">
-          <div>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2 text-base font-semibold text-slate-950">
-                  <ListChecks className="h-4 w-4 text-emerald-700" />
-                  기사 목록
-                </div>
-                <p className="mt-1 text-xs text-slate-500">주별, 월별, 분기별, 연도별로 카드뉴스 연계 기사를 선택합니다.</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`rounded-sm border px-2 py-1 text-xs font-semibold ${scoreTone(totalScore)}`}>
-                  기간 합계 {formatScore(totalScore)}
-                </span>
-                <span className={`rounded-sm border px-2 py-1 text-xs font-semibold ${scoreTone(stackedTotalScore)}`}>
-                  스택 {stackedArticles.length}건 {formatScore(stackedTotalScore)}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {([
-                ["week", "주별"],
-                ["month", "월별"],
-                ["quarter", "분기별"],
-                ["year", "연도별"]
-              ] as Array<[PeriodType, string]>).map(([value, label]) => (
-                <Button
-                  key={value}
-                  type="button"
-                  data-testid={`period-type-${value}`}
-                  variant={periodType === value ? "primary" : "secondary"}
-                  size="sm"
-                  onClick={() => setPeriodType(value)}
-                >
-                  {label}
-                </Button>
-              ))}
-            </div>
-
-            <div className="mt-3 grid gap-3 md:grid-cols-[1fr_1.4fr]">
-              <SelectShell>
-                <select
-                  data-testid="period-select"
-                  value={selectedPeriod?.key || ""}
-                  onInput={(event) => setSelectedPeriodKey(event.currentTarget.value)}
-                  onChange={(event) => setSelectedPeriodKey(event.target.value)}
-                  className="h-10 w-full appearance-none rounded-md border bg-white px-3 pr-9 text-sm outline-none focus:ring-2 focus:ring-ring"
-                >
-                  {periodOptions.map((option) => (
-                    <option key={option.key} value={option.key}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </SelectShell>
-              <SelectShell>
-                <select
-                  data-testid="article-jump-select"
-                  value=""
-                  onChange={(event) => {
-                    if (event.target.value) jumpToArticle(event.target.value);
-                  }}
-                  className="h-10 w-full appearance-none rounded-md border bg-white px-3 pr-9 text-sm outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">기사 하나씩 선택해서 이동</option>
-                  {selectedArticles.map((article) => (
-                    <option key={article.id} value={article.id}>
-                      {article.title}
-                    </option>
-                  ))}
-                </select>
-              </SelectShell>
-            </div>
-
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Button type="button" variant="secondary" size="sm" onClick={checkAllVisibleArticles}>
-                <CheckSquare className="h-4 w-4" />
-                현재 목록 추가
-              </Button>
-              <Button type="button" variant="secondary" size="sm" onClick={clearCheckedArticles}>
-                <Square className="h-4 w-4" />
-                스택 비우기
-              </Button>
-              <SelectedArticlesAnalyzeButton articleIds={checkedArticleIds} />
-            </div>
-
-            <div className="mt-3 max-h-28 space-y-2 overflow-y-auto rounded-md border bg-slate-50 p-2">
-              {selectedArticles.map((article) => (
-                <div key={article.id} className="flex items-center gap-2 rounded-md bg-white px-2 py-1.5">
-                  <input
-                    type="checkbox"
-                    data-testid={`article-check-${article.id}`}
-                    className="h-4 w-4 shrink-0 accent-emerald-700"
-                    checked={checkedIdSet.has(article.id)}
-                    onChange={() => toggleCheckedArticle(article.id)}
-                    aria-label={`${article.title} 분석 선택`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => jumpToArticle(article.id)}
-                    className="inline-flex min-w-0 flex-1 items-center gap-2 text-left text-xs text-slate-700 hover:text-slate-950"
-                  >
-                    <BarChart3 className="h-3.5 w-3.5 shrink-0 text-slate-500" />
-                    <span className="truncate">{article.title}</span>
-                  </button>
-                  <span className={`shrink-0 rounded-sm border px-1.5 py-0.5 text-[11px] font-semibold ${scoreTone(articleMarketScore(article))}`}>
-                    {formatScore(articleMarketScore(article))}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-3 rounded-md border border-emerald-100 bg-emerald-50/70 p-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-xs font-semibold text-emerald-950">선택 스택</div>
-                <span className={`rounded-sm border bg-white px-2 py-0.5 text-[11px] font-semibold ${scoreTone(stackedTotalScore)}`}>
-                  {stackedArticles.length}건 · {formatScore(stackedTotalScore)}
-                </span>
-              </div>
-              <div className="mt-2 flex max-h-20 flex-wrap gap-1.5 overflow-y-auto">
-                {stackedArticles.length ? (
-                  stackedArticles.map((article) => (
-                    <button
-                      key={article.id}
-                      type="button"
-                      onClick={() => toggleCheckedArticle(article.id)}
-                      className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-emerald-200 bg-white px-2 py-1 text-left text-[11px] text-slate-700 hover:bg-emerald-50"
-                      aria-label={`${article.title} 스택에서 제거`}
-                    >
-                      <span className="shrink-0 font-semibold text-emerald-800">{weeklyCardWeekDate(article)}</span>
-                      <span className="truncate">{article.title}</span>
-                      <X className="h-3 w-3 shrink-0 text-slate-400" />
-                    </button>
-                  ))
-                ) : (
-                  <span className="text-xs text-emerald-900">여러 주차에서 필요한 기사만 체크하면 여기에 누적됩니다.</span>
-                )}
-              </div>
+    <section className="rounded-lg border bg-white shadow-sm">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+        onClick={() => setIsListOpen((current) => !current)}
+        aria-expanded={isListOpen}
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          <ListChecks className="h-4 w-4 shrink-0 text-emerald-700" />
+          <div className="min-w-0">
+            <div className="text-base font-semibold text-slate-950">기사 목록</div>
+            <div className="mt-1 truncate text-xs text-slate-500">
+              {selectedPeriod?.label || "선택 기간"} · 현재 {selectedArticles.length}건 · 선택 스택 {stackedArticles.length}건
             </div>
           </div>
-
-          <PeriodAiPanel
-            articles={stackedArticles}
-            periodType={periodType}
-            periodLabelValue={stackedArticles.length ? "선택 스택" : selectedPeriod?.label || "선택 기간"}
-            totalScore={stackedTotalScore}
-            selectionLabel="선택 스택"
-          />
         </div>
-      </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className={`hidden rounded-sm border px-2 py-1 text-xs font-semibold sm:inline-flex ${scoreTone(totalScore)}`}>
+            기간 {formatScore(totalScore)}
+          </span>
+          <span className={`hidden rounded-sm border px-2 py-1 text-xs font-semibold sm:inline-flex ${scoreTone(stackedTotalScore)}`}>
+            스택 {formatScore(stackedTotalScore)}
+          </span>
+          <ChevronDown className={cn("h-5 w-5 text-slate-500 transition", isListOpen && "rotate-180")} />
+        </div>
+      </button>
 
-      <div className="space-y-4">
-        {selectedArticles.length ? (
-          selectedArticles.map((article) => (
-            <ArticleCard
-              key={article.id}
-              article={article}
-              checked={checkedIdSet.has(article.id)}
-              onToggleChecked={toggleCheckedArticle}
+      {isListOpen && (
+        <div className="space-y-4 border-t p-4">
+          <div className="grid gap-4 lg:grid-cols-[1.45fr_0.95fr]">
+            <div>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  ["week", "주별"],
+                  ["month", "월별"],
+                  ["quarter", "분기별"],
+                  ["year", "연도별"]
+                ] as Array<[PeriodType, string]>).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    data-testid={`period-type-${value}`}
+                    variant={periodType === value ? "primary" : "secondary"}
+                    size="sm"
+                    onClick={() => setPeriodType(value)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+
+              <div className="mt-3 grid gap-3 md:grid-cols-[1fr_1.4fr]">
+                <SelectShell>
+                  <select
+                    data-testid="period-select"
+                    value={selectedPeriod?.key || ""}
+                    onInput={(event) => setSelectedPeriodKey(event.currentTarget.value)}
+                    onChange={(event) => setSelectedPeriodKey(event.target.value)}
+                    className="h-10 w-full appearance-none rounded-md border bg-white px-3 pr-9 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    {periodOptions.map((option) => (
+                      <option key={option.key} value={option.key}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </SelectShell>
+                <SelectShell>
+                  <select
+                    data-testid="article-jump-select"
+                    value=""
+                    onChange={(event) => {
+                      if (event.target.value) jumpToArticle(event.target.value);
+                    }}
+                    className="h-10 w-full appearance-none rounded-md border bg-white px-3 pr-9 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">기사 하나씩 선택해서 이동</option>
+                    {selectedArticles.map((article) => (
+                      <option key={article.id} value={article.id}>
+                        {article.title}
+                      </option>
+                    ))}
+                  </select>
+                </SelectShell>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Button type="button" variant="secondary" size="sm" onClick={checkAllVisibleArticles}>
+                  <CheckSquare className="h-4 w-4" />
+                  현재 목록 추가
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={clearCheckedArticles}>
+                  <Square className="h-4 w-4" />
+                  스택 비우기
+                </Button>
+                <SelectedArticlesAnalyzeButton articleIds={checkedArticleIds} />
+              </div>
+
+              <div className="mt-3 max-h-28 space-y-2 overflow-y-auto rounded-md border bg-slate-50 p-2">
+                {selectedArticles.map((article) => (
+                  <div key={article.id} className="flex items-center gap-2 rounded-md bg-white px-2 py-1.5">
+                    <input
+                      type="checkbox"
+                      data-testid={`article-check-${article.id}`}
+                      className="h-4 w-4 shrink-0 accent-emerald-700"
+                      checked={checkedIdSet.has(article.id)}
+                      onChange={() => toggleCheckedArticle(article.id)}
+                      aria-label={`${article.title} 분석 선택`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => jumpToArticle(article.id)}
+                      className="inline-flex min-w-0 flex-1 items-center gap-2 text-left text-xs text-slate-700 hover:text-slate-950"
+                    >
+                      <BarChart3 className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                      <span className="truncate">{article.title}</span>
+                    </button>
+                    <span className={`shrink-0 rounded-sm border px-1.5 py-0.5 text-[11px] font-semibold ${scoreTone(articleMarketScore(article))}`}>
+                      {formatScore(articleMarketScore(article))}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-3 rounded-md border border-emerald-100 bg-emerald-50/70 p-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-xs font-semibold text-emerald-950">선택 스택</div>
+                  <span className={`rounded-sm border bg-white px-2 py-0.5 text-[11px] font-semibold ${scoreTone(stackedTotalScore)}`}>
+                    {stackedArticles.length}건 · {formatScore(stackedTotalScore)}
+                  </span>
+                </div>
+                <div className="mt-2 flex max-h-20 flex-wrap gap-1.5 overflow-y-auto">
+                  {stackedArticles.length ? (
+                    stackedArticles.map((article) => (
+                      <button
+                        key={article.id}
+                        type="button"
+                        onClick={() => toggleCheckedArticle(article.id)}
+                        className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-emerald-200 bg-white px-2 py-1 text-left text-[11px] text-slate-700 hover:bg-emerald-50"
+                        aria-label={`${article.title} 스택에서 제거`}
+                      >
+                        <span className="shrink-0 font-semibold text-emerald-800">{weeklyCardWeekDate(article)}</span>
+                        <span className="truncate">{article.title}</span>
+                        <X className="h-3 w-3 shrink-0 text-slate-400" />
+                      </button>
+                    ))
+                  ) : (
+                    <span className="text-xs text-emerald-900">여러 주차에서 필요한 기사만 체크하면 여기에 누적됩니다.</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <PeriodAiPanel
+              articles={stackedArticles}
+              periodType={periodType}
+              periodLabelValue={stackedArticles.length ? "선택 스택" : selectedPeriod?.label || "선택 기간"}
+              totalScore={stackedTotalScore}
+              selectionLabel="선택 스택"
             />
-          ))
-        ) : (
-          <div className="rounded-md border border-dashed p-6 text-sm text-slate-500">선택한 기간에 저장된 기사가 없습니다.</div>
-        )}
-      </div>
+          </div>
+
+          <div className="space-y-4">
+            {selectedArticles.length ? (
+              selectedArticles.map((article) => (
+                <ArticleCard
+                  key={article.id}
+                  article={article}
+                  checked={checkedIdSet.has(article.id)}
+                  onToggleChecked={toggleCheckedArticle}
+                />
+              ))
+            ) : (
+              <div className="rounded-md border border-dashed p-6 text-sm text-slate-500">선택한 기간에 저장된 기사가 없습니다.</div>
+            )}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
