@@ -60,6 +60,13 @@ The logic is News -> Signal -> Trend -> Insight -> Strategy.
 Return JSON only.
 `;
 
+export const PERIOD_STRATEGY_SYSTEM_PROMPT = `
+You create Korean strategy insights for Farmhannong from already-collected Farmhannong Agro Weekly card news.
+Do not browse or assume outside information. Use only the provided article summaries, scores, factor evidence, and product impacts.
+Explain how the selected period's total market score leads to practical Farmhannong strategy.
+Return JSON only.
+`;
+
 export function buildDailyReportPrompt(input: string) {
   return `
 Create a Daily Report from these analyzed articles and product impacts.
@@ -90,6 +97,33 @@ Return JSON:
   "risks": ["..."],
   "opportunities": ["..."],
   "sales_action_items": ["..."]
+}
+`;
+}
+
+export function buildPeriodStrategyPrompt(input: string) {
+  return `
+Create an aggregate strategy view for the selected period.
+
+Required logic:
+- Start from the selected period and total market impact score.
+- Identify dominant signals and product impact direction.
+- Convert the result into Farmhannong strategy, risks, opportunities, and action items.
+- Keep it concise and practical for business teams.
+- Do not mention external search. This is based only on the supplied data.
+
+Data:
+${input}
+
+Return JSON:
+{
+  "headline": "...",
+  "score_interpretation": "...",
+  "dominant_signals": ["..."],
+  "product_strategy": ["..."],
+  "risks": ["..."],
+  "opportunities": ["..."],
+  "action_items": ["..."]
 }
 `;
 }

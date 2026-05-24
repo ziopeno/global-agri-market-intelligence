@@ -1,5 +1,12 @@
 import { ISSUE_CATEGORIES, MARKET_FACTORS, PRODUCT_SEEDS } from "@/lib/constants";
-import { buildArticleAnalysisPrompt, buildDailyReportPrompt, DAILY_REPORT_SYSTEM_PROMPT, MARKET_ANALYSIS_SYSTEM_PROMPT } from "@/lib/prompts";
+import {
+  buildArticleAnalysisPrompt,
+  buildDailyReportPrompt,
+  buildPeriodStrategyPrompt,
+  DAILY_REPORT_SYSTEM_PROMPT,
+  MARKET_ANALYSIS_SYSTEM_PROMPT,
+  PERIOD_STRATEGY_SYSTEM_PROMPT
+} from "@/lib/prompts";
 import { normalizeFactor, sumMarketImpact } from "@/lib/scoring";
 import type { ArticleAnalysis, ArticleInput, DailyReportContent, ExtractedFactor } from "@/lib/types";
 
@@ -366,6 +373,17 @@ export async function generateDailyReportFromAi(serializedInput: string): Promis
     return await callOpenAIJson<Omit<DailyReportContent, "evidence">>([
       { role: "system", content: DAILY_REPORT_SYSTEM_PROMPT },
       { role: "user", content: buildDailyReportPrompt(serializedInput) }
+    ]);
+  } catch {
+    return null;
+  }
+}
+
+export async function generatePeriodStrategyFromAi<T>(serializedInput: string): Promise<T | null> {
+  try {
+    return await callOpenAIJson<T>([
+      { role: "system", content: PERIOD_STRATEGY_SYSTEM_PROMPT },
+      { role: "user", content: buildPeriodStrategyPrompt(serializedInput) }
     ]);
   } catch {
     return null;
