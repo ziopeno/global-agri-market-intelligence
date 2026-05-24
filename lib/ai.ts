@@ -49,11 +49,12 @@ async function callOpenAIJson<T>(messages: ChatMessage[]): Promise<T | null> {
   return JSON.parse(content) as T;
 }
 
-function inferReliability(source: string) {
-  const lower = source.toLowerCase();
-  if (/(fao|usda|eu|commission|government|ministry|un|world bank|oecd)/i.test(lower)) return 1;
-  if (/(reuters|bloomberg|financial times|agrimoney|feedstuffs)/i.test(lower)) return 0.8;
-  if (/(company|corp|brief|industry|sample)/i.test(lower)) return 0.6;
+function inferReliability(source: string, text = "") {
+  const lower = `${source} ${text}`.toLowerCase();
+  if (/(fao|usda|eu|commission|government|ministry|un|world bank|worldbank|oecd|itc|epa|efsa|official|ministry)/i.test(lower)) return 1;
+  if (/(reuters|bloomberg|financial times|ft\.com|agrimoney|feedstuffs|dtn|successful farming|feednavigator)/i.test(lower)) return 0.8;
+  if (/(company|corp|brief|industry|agropages|association|press release|sample|farmhannong agro weekly)/i.test(lower)) return 0.6;
+  if (/(blog|unknown|unclear|social|forum)/i.test(lower)) return 0.4;
   return 0.8;
 }
 
@@ -344,8 +345,9 @@ export async function analyzeArticle(article: ArticleInput): Promise<ArticleAnal
 
     if (!result) return heuristicAnalyzeArticle(article);
 
+    const sourceReliability = inferReliability(article.source, `${article.title}\n${article.originalText}`);
     const factors = (result.factors || [])
-      .map((factor) => normalizeFactor(factor))
+      .map((factor) => normalizeFactor({ ...factor, reliability: sourceReliability }))
       .filter((factor) => MARKET_FACTORS.includes(factor.factor_name as (typeof MARKET_FACTORS)[number]));
 
     const normalizedFactors = factors.length ? factors : heuristicAnalyzeArticle(article).factors;

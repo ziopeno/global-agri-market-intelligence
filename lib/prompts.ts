@@ -1,4 +1,4 @@
-import { ISSUE_CATEGORIES, MARKET_FACTORS, PRODUCT_SEEDS } from "@/lib/constants";
+import { ISSUE_CATEGORIES, MARKET_FACTORS, PRODUCT_SEEDS, scoringCriteriaForPrompt } from "@/lib/constants";
 import type { ArticleInput } from "@/lib/types";
 
 export const MARKET_ANALYSIS_SYSTEM_PROMPT = `
@@ -10,10 +10,14 @@ Rules:
 - Every score must include evidence from the article.
 - Use only these market factor names: ${MARKET_FACTORS.join(", ")}.
 - Use only these issue categories: ${ISSUE_CATEGORIES.join(", ")}.
+- Score Impact and Likelihood by the quantitative criteria below. Do not use vague intuition.
 - Duration must be 1.0 for short-term, 1.3 for medium-term, or 1.6 for long-term.
 - Reliability must be 1.0 for official/government/international institution, 0.8 for major media/professional publication, 0.6 for industry/company release, 0.4 for blog/unclear source.
 - Direction is +1 when the factor is positive for the relevant agriculture/agrochemical market opportunity, and -1 when negative.
+- If the article does not provide enough evidence for a higher bucket, choose the lower bucket.
 - Return JSON only.
+
+${scoringCriteriaForPrompt()}
 `;
 
 export function buildArticleAnalysisPrompt(article: ArticleInput) {
@@ -45,7 +49,7 @@ Return this JSON shape:
       "likelihood": 1,
       "duration": 1.0,
       "reliability": 0.8,
-      "evidence": "short Korean evidence from article"
+      "evidence": "short Korean evidence from article, including the reason for the selected score bucket"
     }
   ],
   "related_products": [${PRODUCT_SEEDS.map((product) => `"${product.name}"`).join(", ")}]

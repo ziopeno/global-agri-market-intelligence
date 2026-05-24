@@ -12,6 +12,13 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DURATION_SCORE_CRITERIA,
+  DURATION_WEIGHT_RATIONALE,
+  IMPACT_SCORE_CRITERIA,
+  LIKELIHOOD_SCORE_CRITERIA,
+  RELIABILITY_SCORE_CRITERIA
+} from "@/lib/constants";
 
 const flow = [
   { title: "News", description: "Farmhannong Agro Weekly DB에서 농업·농약·비료·정책 카드뉴스를 자동 수집" },
@@ -76,28 +83,10 @@ const scoreRows = [
   ["Reliability", "1.0 / 0.8 / 0.6 / 0.4", "점수가 아니라 출처 신뢰도 보정계수이며, 1.0이 가장 높음"]
 ];
 
-const impactScaleRows = [
-  ["1", "매우 낮음", "시장 영향이 간접적이거나 기사 근거가 매우 제한적입니다."],
-  ["2", "낮음", "관련성은 있지만 판매, 수요, 가격에 미치는 직접 영향이 제한적입니다."],
-  ["3", "보통", "특정 국가, 작물, 제품군에는 의미가 있으나 전체 시장 영향은 중간 수준입니다."],
-  ["4", "높음", "가격, 공급, 규제, 생산능력처럼 시장을 직접 움직이는 변수입니다."],
-  ["5", "매우 높음", "여러 국가, 작물, 제품군에 동시에 영향을 줄 수 있는 구조적 이슈입니다."]
-];
-
-const likelihoodScaleRows = [
-  ["1", "매우 낮음", "추정이나 불확실한 언급에 가까워 실제 발생 가능성이 낮습니다."],
-  ["2", "낮음", "초기 신호 수준이며 실제 시장 변화로 이어질지는 아직 제한적입니다."],
-  ["3", "보통", "가능성은 확인되지만 전망, 관측, 조건부 실행 성격이 남아 있습니다."],
-  ["4", "높음", "구체적 발표, 수치, 실행 일정이 있어 발생 가능성이 높습니다."],
-  ["5", "매우 높음", "이미 발생했거나 공식 발표, 확정 정보에 가까운 상태입니다."]
-];
-
-const reliabilityScaleRows = [
-  ["1.0x", "최고", "정부, 공식기관, 국제기구 등 가장 신뢰도가 높은 출처입니다."],
-  ["0.8x", "높음", "주요 언론, 전문지 등 검증된 외부 출처입니다."],
-  ["0.6x", "중간", "업계지, 기업 발표처럼 이해관계가 있거나 검증 범위가 제한된 출처입니다."],
-  ["0.4x", "낮음", "블로그, 불명확한 출처 등 검증이 제한적인 정보입니다."]
-];
+const impactScaleRows = IMPACT_SCORE_CRITERIA.map((item) => [String(item.score), item.label, item.criterion] as const);
+const likelihoodScaleRows = LIKELIHOOD_SCORE_CRITERIA.map((item) => [String(item.score), item.label, item.criterion] as const);
+const durationScaleRows = DURATION_SCORE_CRITERIA.map((item) => [`${item.score.toFixed(1)}x`, item.label, item.criterion] as const);
+const reliabilityScaleRows = RELIABILITY_SCORE_CRITERIA.map((item) => [`${item.score.toFixed(1)}x`, item.label, item.criterion] as const);
 
 export default function GuidePage() {
   return (
@@ -246,10 +235,10 @@ export default function GuidePage() {
 
           <div className="space-y-4 lg:col-span-2">
             <div className="rounded-md border bg-emerald-50 p-4 text-sm leading-6 text-emerald-950">
-              Impact와 Likelihood는 1~5점 척도입니다. Reliability는 1~5점이 아니라 보정계수이며,
-              공식기관 출처일수록 1.0x에 가깝게 반영됩니다.
+              Impact와 Likelihood는 1~5점 척도이며, 아래 정량 구간에 맞춰 점수를 선택합니다.
+              Duration과 Reliability는 점수가 아니라 보정계수입니다. 근거가 애매하면 높은 구간이 아니라 낮은 구간을 적용합니다.
             </div>
-            <div className="grid gap-4 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div className="overflow-hidden rounded-md border bg-white">
                 <div className="border-b bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-950">Impact 1~5점 기준</div>
                 <table className="w-full text-sm">
@@ -281,6 +270,21 @@ export default function GuidePage() {
               </div>
 
               <div className="overflow-hidden rounded-md border bg-white">
+                <div className="border-b bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-950">Duration 보정계수</div>
+                <table className="w-full text-sm">
+                  <tbody>
+                    {durationScaleRows.map(([score, label, meaning]) => (
+                      <tr key={score} className="border-b last:border-b-0">
+                        <td className="w-20 px-3 py-3 font-semibold text-slate-900">{score}</td>
+                        <td className="w-20 px-3 py-3 text-slate-700">{label}</td>
+                        <td className="px-3 py-3 leading-6 text-slate-600">{meaning}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="overflow-hidden rounded-md border bg-white">
                 <div className="border-b bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-950">Reliability 보정계수</div>
                 <table className="w-full text-sm">
                   <tbody>
@@ -293,6 +297,14 @@ export default function GuidePage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+            <div className="rounded-md border bg-slate-50 p-4">
+              <div className="text-sm font-semibold text-slate-950">Duration 1.0 / 1.3 / 1.6 검증과 해석</div>
+              <div className="mt-2 space-y-2 text-sm leading-6 text-slate-700">
+                {DURATION_WEIGHT_RATIONALE.map((item) => (
+                  <p key={item}>{item}</p>
+                ))}
               </div>
             </div>
           </div>

@@ -18,8 +18,8 @@ export function computeFactorScore(input: {
 
 export function normalizeFactor(raw: Partial<ExtractedFactor>): ExtractedFactor {
   const direction = raw.direction === -1 ? -1 : 1;
-  const impact = clamp(Number(raw.impact ?? 3), 1, 5);
-  const likelihood = clamp(Number(raw.likelihood ?? 3), 1, 5);
+  const impact = clamp(Math.round(Number(raw.impact ?? 3)), 1, 5);
+  const likelihood = clamp(Math.round(Number(raw.likelihood ?? 3)), 1, 5);
   const duration = [1, 1.3, 1.6].includes(Number(raw.duration)) ? Number(raw.duration) : 1;
   const reliability = [1, 0.8, 0.6, 0.4].includes(Number(raw.reliability))
     ? Number(raw.reliability)

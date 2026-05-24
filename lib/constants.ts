@@ -58,6 +58,126 @@ export const RELIABILITY_LABELS = [
   { score: 0.4, label: "블로그 / 불명확한 출처" }
 ] as const;
 
+export const IMPACT_SCORE_CRITERIA = [
+  {
+    score: 1,
+    label: "매우 낮음",
+    criterion: "시장 가격, 수급, 원가, 등록, 판매 기회에 직접 영향이 없거나 단순 배경 정보입니다. 예상 변화폭은 1% 미만, 또는 한 지역·한 고객군의 제한적 신호입니다."
+  },
+  {
+    score: 2,
+    label: "낮음",
+    criterion: "한 국가의 일부 지역, 단일 작물, 제한된 제품군에 영향을 줍니다. 예상 변화폭은 1% 이상 3% 미만이거나 단기 영업 참고 수준입니다."
+  },
+  {
+    score: 3,
+    label: "보통",
+    criterion: "특정 국가·작물·제품군의 수요, 가격, 공급, 원가에 의미 있는 영향을 줍니다. 예상 변화폭은 3% 이상 7% 미만입니다."
+  },
+  {
+    score: 4,
+    label: "높음",
+    criterion: "전국 단위 정책, 주요 작물 가격·수급, 원제 가격, 병해충 확산, 등록 이슈처럼 시장을 직접 움직입니다. 예상 변화폭은 7% 이상 15% 미만입니다."
+  },
+  {
+    score: 5,
+    label: "매우 높음",
+    criterion: "여러 국가·주요 작물·제품 포트폴리오에 동시에 영향을 주는 구조적 충격입니다. 예상 변화폭은 15% 이상이거나 수출입 금지, 대규모 재해, 핵심 등록 취소급 이슈입니다."
+  }
+] as const;
+
+export const LIKELIHOOD_SCORE_CRITERIA = [
+  {
+    score: 1,
+    label: "매우 낮음",
+    criterion: "루머, 의견, 가능성 언급 수준입니다. 수치·일정·공식 발표가 없고 실제 발생 가능성은 20% 미만으로 봅니다."
+  },
+  {
+    score: 2,
+    label: "낮음",
+    criterion: "초기 관측 또는 조건부 전망입니다. 단일 출처이거나 전제 조건이 크며 발생 가능성은 20% 이상 40% 미만입니다."
+  },
+  {
+    score: 3,
+    label: "보통",
+    criterion: "신뢰 가능한 전망, 조사, 모니터링 결과가 있으나 아직 확정은 아닙니다. 발생 가능성은 40% 이상 60% 미만입니다."
+  },
+  {
+    score: 4,
+    label: "높음",
+    criterion: "공식 일정, 구체 수치, 복수 출처, 실행 계획이 확인됩니다. 발생 가능성은 60% 이상 80% 미만입니다."
+  },
+  {
+    score: 5,
+    label: "매우 높음",
+    criterion: "이미 발생했거나 공식 발표·시행·확정 자료가 있습니다. 발생 가능성은 80% 이상으로 봅니다."
+  }
+] as const;
+
+export const DURATION_SCORE_CRITERIA = [
+  {
+    score: 1.0,
+    label: "단기",
+    criterion: "영향 기간이 4주 이하입니다. 일시적 가격 반응, 단기 물류 차질, 단발성 기상 이벤트, 즉시성 뉴스에 적용합니다."
+  },
+  {
+    score: 1.3,
+    label: "중기",
+    criterion: "영향 기간이 4주 초과 6개월 이하입니다. 한 작기, 파종·방제·구매 시즌, 분기 단위 정책·수급 변화에 적용합니다."
+  },
+  {
+    score: 1.6,
+    label: "장기",
+    criterion: "영향 기간이 6개월 초과입니다. 등록 규제, 구조적 정책 변화, 다년 공급능력, 무역 구조 변화, 저항성·포트폴리오 이슈에 적용합니다."
+  }
+] as const;
+
+export const RELIABILITY_SCORE_CRITERIA = [
+  {
+    score: 1.0,
+    label: "공식",
+    criterion: "정부, 국제기구, 통계기관, 규제기관, 공식 보고서처럼 1차 출처에 가깝습니다."
+  },
+  {
+    score: 0.8,
+    label: "검증 매체",
+    criterion: "Reuters, Bloomberg, 주요 전문지처럼 편집·검증 절차가 있는 언론 또는 전문 매체입니다."
+  },
+  {
+    score: 0.6,
+    label: "업계·기업",
+    criterion: "기업 발표, 업계지, 협회 자료처럼 정보 출처는 식별되지만 이해관계나 검증 한계가 있습니다."
+  },
+  {
+    score: 0.4,
+    label: "불명확",
+    criterion: "블로그, 개인 의견, 출처 불명확한 재가공 정보처럼 검증 근거가 약합니다."
+  }
+] as const;
+
+export const DURATION_WEIGHT_RATIONALE = [
+  "Duration은 독립 점수가 아니라 시간 보정계수입니다.",
+  "단기는 기준값 1.0으로 두고, 중기는 같은 강도의 신호가 한 시즌까지 이어질 수 있으므로 30%를 가산합니다.",
+  "장기는 등록·정책·공급 구조처럼 반년 이상 영향을 줄 수 있으므로 60%를 가산합니다.",
+  "1.0/1.3/1.6의 3단계는 과도한 세밀함을 피하면서도 장기 이슈를 단기 뉴스보다 우선 보게 하려는 업무용 가중치입니다.",
+  "검증 결과, 기간 경계가 없으면 모호하지만 4주 이하, 4주 초과~6개월 이하, 6개월 초과로 정의하면 운영 기준은 명확합니다. 다만 계수 자체는 시장 법칙이 아니라 내부 정책값이므로 실제 성과 데이터로 주기적 보정이 필요합니다."
+] as const;
+
+export function scoringCriteriaForPrompt() {
+  const lines = [
+    "Quantitative scoring criteria:",
+    "Impact:",
+    ...IMPACT_SCORE_CRITERIA.map((item) => `- ${item.score}: ${item.label}. ${item.criterion}`),
+    "Likelihood:",
+    ...LIKELIHOOD_SCORE_CRITERIA.map((item) => `- ${item.score}: ${item.label}. ${item.criterion}`),
+    "Duration multiplier:",
+    ...DURATION_SCORE_CRITERIA.map((item) => `- ${item.score}: ${item.label}. ${item.criterion}`),
+    "Reliability multiplier:",
+    ...RELIABILITY_SCORE_CRITERIA.map((item) => `- ${item.score}: ${item.label}. ${item.criterion}`)
+  ];
+  return lines.join("\n");
+}
+
 export const PRODUCT_SEEDS = [
   {
     name: "Metamifop",
