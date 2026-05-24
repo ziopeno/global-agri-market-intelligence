@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { createDailyReport } from "@/lib/pipeline";
 import { prisma } from "@/lib/db";
 import { createArticleDuplicateKey, normalizeArticleUrl } from "@/lib/dedupe";
+import { collectFarmhannongWeeklyArticles, isFarmhannongWeeklySource } from "@/lib/farmhannong-weekly";
 import { collectRssArticles } from "@/lib/rss";
 import { ensureProductSeeds } from "@/lib/seed";
 import { analyzeAndStoreArticle } from "@/lib/pipeline";
@@ -135,12 +136,14 @@ export async function runNewsFetchJob(): Promise<NewsFetchJobResult> {
     const createdArticleIds: string[] = [];
 
     try {
-      const articles = await collectRssArticles(source.url, {
-        sourceId: source.id,
-        sourceName: source.name,
-        category: source.category,
-        country: source.country
-      });
+      const articles = isFarmhannongWeeklySource(source.url, source.name)
+        ? await collectFarmhannongWeeklyArticles(source.url, { sourceId: source.id })
+        : await collectRssArticles(source.url, {
+            sourceId: source.id,
+            sourceName: source.name,
+            category: source.category,
+            country: source.country
+          });
       sourceResult.fetched = articles.length;
 
       for (const article of articles) {

@@ -45,7 +45,7 @@ export default async function SourcesPage() {
         <Card>
           <CardHeader>
             <CardTitle>News Sources</CardTitle>
-            <CardDescription>등록된 active RSS source가 매주 월요일 자동 수집의 기준입니다.</CardDescription>
+            <CardDescription>등록된 active Weekly DB/RSS source가 매주 월요일 자동 수집의 기준입니다.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-3">
@@ -68,7 +68,7 @@ export default async function SourcesPage() {
         <Card>
           <CardHeader>
             <CardTitle>Automatic Fetch</CardTitle>
-            <CardDescription>RSS 수집, 중복 제거, AI 분석, Daily Report 업데이트를 한 번에 실행합니다.</CardDescription>
+            <CardDescription>Weekly DB/RSS 수집, 중복 제거, AI 분석, Daily Report 업데이트를 한 번에 실행합니다.</CardDescription>
           </CardHeader>
           <CardContent>
             <NewsFetchButton />
@@ -79,7 +79,7 @@ export default async function SourcesPage() {
       <Card>
         <CardHeader>
           <CardTitle>RSS Source 관리</CardTitle>
-          <CardDescription>name, url, category, country, is_active, last_fetched_at을 관리합니다.</CardDescription>
+          <CardDescription>name, url, category, country, is_active, last_fetched_at을 관리합니다. Farmhannong Agro Weekly DB도 Source로 관리됩니다.</CardDescription>
         </CardHeader>
         <CardContent>
           <NewsSourceManager sources={sourceRows} />

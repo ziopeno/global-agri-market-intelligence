@@ -26,11 +26,11 @@ async function checkVercelCron() {
       addCheck("Vercel Cron", "fail", "vercel.json에 /api/jobs/fetch-news cron이 없습니다.");
       return;
     }
-    if (cron.schedule !== "0 0 * * 1") {
-      addCheck("Vercel Cron", "warn", `현재 schedule은 ${cron.schedule}입니다. KST 월요일 09:00은 0 0 * * 1입니다.`);
+    if (cron.schedule !== "10 0 * * 1") {
+      addCheck("Vercel Cron", "warn", `현재 schedule은 ${cron.schedule}입니다. KST 월요일 09:10은 10 0 * * 1입니다.`);
       return;
     }
-    addCheck("Vercel Cron", "pass", "매주 월요일 Asia/Seoul 오전 9시 실행 설정이 있습니다.");
+    addCheck("Vercel Cron", "pass", "매주 월요일 Asia/Seoul 오전 9시 10분 실행 설정이 있습니다.");
   } catch (error) {
     addCheck("Vercel Cron", "fail", error instanceof Error ? error.message : "vercel.json 확인 실패");
   }
@@ -58,11 +58,11 @@ async function checkDatabase() {
       prisma.newsSource.count({ where: { isActive: true } }),
       prisma.product.count()
     ]);
-    addCheck("Seed data", sourceCount > 0 && productCount > 0 ? "pass" : "warn", `RSS Source ${sourceCount}개, active ${activeSourceCount}개, 제품 ${productCount}개`);
+    addCheck("Seed data", sourceCount > 0 && productCount > 0 ? "pass" : "warn", `Source ${sourceCount}개, active ${activeSourceCount}개, 제품 ${productCount}개`);
     if (activeSourceCount === 0) {
-      addCheck("Active RSS sources", "fail", "active RSS Source가 없습니다. /sources에서 Source를 활성화하세요.");
+      addCheck("Active sources", "fail", "active Source가 없습니다. /sources에서 Source를 활성화하세요.");
     } else {
-      addCheck("Active RSS sources", "pass", `자동 수집 대상 Source ${activeSourceCount}개가 있습니다.`);
+      addCheck("Active sources", "pass", `자동 수집 대상 Source ${activeSourceCount}개가 있습니다.`);
     }
   } catch (error) {
     addCheck("Seed data", "fail", error instanceof Error ? error.message : "Seed 데이터 확인 실패");

@@ -10,7 +10,7 @@ News -> Signal -> Trend -> Insight -> Strategy
 
 ## MVP 포함 범위
 
-- 등록된 RSS Source 기반 자동 뉴스 수집
+- 등록된 Farmhannong Weekly DB/RSS Source 기반 자동 뉴스 수집
 - URL 및 title + source 기준 중복 제거
 - Source별 fetch 실패 격리와 DB 로그 저장
 - 기사 수동 입력은 `Manual Add` 보조 기능으로 유지
@@ -171,7 +171,7 @@ OPENAI_MODEL="gpt-4.1-mini"
 
 키가 없으면 데모용 휴리스틱 분석기가 작동합니다.
 
-## RSS Source 관리
+## Weekly DB/RSS Source 관리
 
 기본 수집 흐름은 `/sources` 화면에서 관리하는 `news_sources` 테이블을 사용합니다.
 
@@ -184,22 +184,21 @@ Source 필드:
 - `is_active`
 - `last_fetched_at`
 
-새 RSS Source 추가 방법:
+새 Source 추가 방법:
 
 1. `/sources`로 이동합니다.
-2. Name, RSS URL, Category, Country를 입력합니다.
+2. Name, Source URL, Category, Country를 입력합니다.
 3. Active 체크 상태로 저장하면 다음 자동 수집부터 포함됩니다.
 4. 특정 Source를 잠시 제외하려면 Active 체크를 끕니다.
 
-Seed에는 아래 Source가 들어갑니다. 일부 매체는 RSS 정책이 바뀔 수 있으므로 `/sources`에서 URL을 수정할 수 있게 해두었습니다.
+Seed에는 아래 Source가 들어갑니다. Farmhannong Agro Weekly DB는 정적 HTML 안의 최신 주차 `newsDatabase`를 전용 수집기로 읽고, 나머지는 RSS로 읽습니다. 일부 매체는 정책이 바뀔 수 있으므로 `/sources`에서 URL을 수정할 수 있게 해두었습니다.
 
+- Farmhannong Agro Weekly DB
 - FAO News
-- USDA News
-- World Bank Agriculture
-- Reuters Commodities
-- Agropages
-- FeedNavigator
-- Successful Farming
+- USDA NASS News
+- USDA NASS Reports
+- USDA ARS Research News
+- World Grain Trade
 
 ## 자동 뉴스 수집 Job
 
@@ -211,9 +210,9 @@ POST /api/jobs/fetch-news
 
 실행 순서:
 
-1. active RSS Source 조회
-2. Source별 RSS fetch
-3. 기사 title, url, published_at, source, snippet 저장
+1. active Weekly DB/RSS Source 조회
+2. Farmhannong Weekly DB 또는 RSS Source별 fetch
+3. 기사 title, url, published_at, source, snippet/raw content 저장
 4. 같은 URL 또는 같은 title + source 조합 중복 제외
 5. 신규 기사 AI 분석
 6. `article_analyses`, `article_factors`, `product_impact` 저장
@@ -251,20 +250,20 @@ curl -X POST "http://localhost:3000/api/jobs/fetch-news?secret=change-me"
 
 ## Cron 설정
 
-Vercel Cron은 GET 요청을 보내므로 `vercel.json`은 `/api/jobs/fetch-news`를 매주 월요일 UTC 00:00에 호출합니다.
+Vercel Cron은 GET 요청을 보내므로 `vercel.json`은 `/api/jobs/fetch-news`를 매주 월요일 UTC 00:10에 호출합니다.
 
 ```json
 {
   "path": "/api/jobs/fetch-news",
-  "schedule": "0 0 * * 1"
+  "schedule": "10 0 * * 1"
 }
 ```
 
-UTC 월요일 00:00은 Asia/Seoul 기준 월요일 오전 9시입니다. API는 `POST /api/jobs/fetch-news`를 중심으로 제공하고, Vercel Cron 호환을 위해 같은 경로의 GET도 허용합니다.
+UTC 월요일 00:10은 Asia/Seoul 기준 월요일 오전 9시 10분입니다. 카드뉴스 사이트의 월요일 오전 9시 업데이트 직후 연계되도록 10분 뒤 실행합니다. API는 `POST /api/jobs/fetch-news`를 중심으로 제공하고, Vercel Cron 호환을 위해 같은 경로의 GET도 허용합니다.
 
 해당 엔드포인트는 매주 아래 작업을 수행합니다.
 
-1. RSS 수집
+1. Farmhannong Agro Weekly DB 및 RSS 수집
 2. 중복 제거
 3. 기사 요약
 4. 시장 요인 추출

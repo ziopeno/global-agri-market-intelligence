@@ -13,6 +13,38 @@ import { formatDateTime, formatScore, scoreTone } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+function factorScoreValue(factor: any) {
+  return Number(factor.manualFactorScore ?? factor.factorScore ?? 0);
+}
+
+function signedFormula(factor: any) {
+  const direction = Number(factor.direction || 0);
+  const sign = direction > 0 ? "+1" : "-1";
+  return `${sign} x ${factor.impact} x ${factor.likelihood} x ${factor.duration} x ${factor.reliability}`;
+}
+
+function buildMarketImpactReason(article: any) {
+  const factors = article.factors || [];
+  if (!factors.length) {
+    return {
+      total: Number(article.marketImpactScore || 0),
+      formula: "아직 추출된 시장 요인이 없어 점수 산식 근거가 없습니다.",
+      topFactors: []
+    };
+  }
+
+  const total = factors.reduce((sum: number, factor: any) => sum + factorScoreValue(factor), 0);
+  const topFactors = [...factors]
+    .sort((a: any, b: any) => Math.abs(factorScoreValue(b)) - Math.abs(factorScoreValue(a)))
+    .slice(0, 4);
+
+  return {
+    total,
+    formula: `시장 영향 점수는 각 요인의 Direction x Impact x Likelihood x Duration x Reliability 값을 합산해 산정합니다.`,
+    topFactors
+  };
+}
+
 export default async function NewsPage() {
   let articles: any[] = getFallbackArticles();
   let activeSourceCount = 0;
@@ -44,7 +76,7 @@ export default async function NewsPage() {
         <Card>
           <CardHeader>
             <CardTitle>자동 뉴스 수집</CardTitle>
-            <CardDescription>등록된 active RSS source {activeSourceCount}개를 순회해 신규 기사만 저장하고 AI 분석까지 실행합니다.</CardDescription>
+            <CardDescription>등록된 active Weekly DB/RSS source {activeSourceCount}개를 순회해 신규 기사만 저장하고 AI 분석까지 실행합니다.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap items-center gap-3">
             <Link
@@ -53,7 +85,7 @@ export default async function NewsPage() {
             >
               News Sources 관리
             </Link>
-            <span className="text-sm text-slate-500">기본 흐름은 RSS 자동 수집입니다.</span>
+            <span className="text-sm text-slate-500">기본 흐름은 Farmhannong Weekly DB와 RSS 자동 수집입니다.</span>
           </CardContent>
         </Card>
         <Card>
@@ -91,6 +123,7 @@ export default async function NewsPage() {
               const relatedProducts = article.productImpacts
                 .filter((impact: any) => impact.productImpactScore !== 0)
                 .slice(0, 4);
+              const marketImpactReason = buildMarketImpactReason(article);
               return (
                 <article key={article.id} id={article.id} className="rounded-lg border bg-white p-4">
                   <div className="flex flex-wrap items-center gap-2">
@@ -165,6 +198,30 @@ export default async function NewsPage() {
                         )}
                       </div>
                     </div>
+                  </div>
+                  <div className="mt-3 rounded-md border border-emerald-100 bg-emerald-50 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-sm font-semibold text-emerald-950">시장 영향 점수 책정 이유</div>
+                      <span className={`rounded-sm border px-2 py-1 text-xs font-medium ${scoreTone(marketImpactReason.total)}`}>
+                        합산 {formatScore(marketImpactReason.total)}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-emerald-900">{marketImpactReason.formula}</p>
+                    {marketImpactReason.topFactors.length ? (
+                      <div className="mt-3 space-y-2">
+                        {marketImpactReason.topFactors.map((factor: any) => (
+                          <div key={factor.id} className="rounded-md bg-white/75 p-2 text-xs leading-5 text-slate-700">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="font-semibold text-slate-900">{factor.factorName}</span>
+                              <span className="font-mono text-slate-600">
+                                {signedFormula(factor)} = {formatScore(factorScoreValue(factor))}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-slate-600">{factor.evidence || "AI가 기사 제목/본문에서 해당 시장 요인을 추출했습니다."}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </article>
               );

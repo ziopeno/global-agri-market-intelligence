@@ -90,8 +90,8 @@ export function NewsSourceManager({ sources }: { sources: NewsSourceRow[] }) {
           <Input id="new-source-name" name="name" required placeholder="Source name" />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="new-source-url">RSS URL</Label>
-          <Input id="new-source-url" name="url" type="url" required placeholder="https://..." />
+          <Label htmlFor="new-source-url">Source URL</Label>
+          <Input id="new-source-url" name="url" type="url" required placeholder="RSS 또는 Weekly DB URL" />
         </div>
         <div className="space-y-2">
           <Label htmlFor="new-source-category">Category</Label>
@@ -134,7 +134,7 @@ export function NewsSourceManager({ sources }: { sources: NewsSourceRow[] }) {
                   <Input value={draft.name} onChange={(event) => updateDraft(source.id, { name: event.target.value })} />
                 </div>
                 <div className="space-y-2">
-                  <Label>RSS URL</Label>
+                  <Label>Source URL</Label>
                   <Input value={draft.url} onChange={(event) => updateDraft(source.id, { url: event.target.value })} />
                 </div>
                 <div className="space-y-2">

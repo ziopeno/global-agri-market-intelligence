@@ -325,6 +325,13 @@ export const SAMPLE_ARTICLES = [
 
 export const NEWS_SOURCE_SEEDS = [
   {
+    name: "Farmhannong Agro Weekly DB",
+    url: "https://ziopeno.github.io/farmhannong-agro-weekly-db/",
+    category: "농약/비료 시장",
+    country: "Global",
+    isActive: true
+  },
+  {
     name: "FAO News",
     url: "https://www.fao.org/feeds/fao-newsroom-rss",
     category: "농산물 수급",

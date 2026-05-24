@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const flow = [
-  { title: "News", description: "RSS Source에서 글로벌 농업·농약·비료·정책 뉴스를 자동 수집" },
+  { title: "News", description: "Farmhannong Weekly DB와 RSS Source에서 농업·농약·비료·정책 뉴스를 자동 수집" },
   { title: "Signal", description: "기사에서 국가, 작물, 이슈 유형, 시장 요인을 추출" },
   { title: "Trend", description: "같은 이슈가 반복되는 국가·작물·카테고리를 누적 추적" },
   { title: "Insight", description: "시장 영향 점수와 제품 영향 점수로 기회와 위험을 구분" },
@@ -30,7 +30,7 @@ const pages = [
   },
   {
     name: "소스",
-    purpose: "자동 수집에 사용할 RSS Source를 관리합니다.",
+    purpose: "자동 수집에 사용할 Weekly DB/RSS Source를 관리합니다.",
     use: "Source를 추가·수정·비활성화하고 Run News Fetch Now로 즉시 수집을 실행합니다.",
     decision: "어떤 외부 정보가 시스템 판단에 들어오는지 관리합니다."
   },
@@ -61,10 +61,10 @@ const pages = [
 ];
 
 const operatingTasks = [
-  "RSS Source가 실제로 작동하는지 정기적으로 확인하고, 불필요한 Source는 비활성화합니다.",
+  "Weekly DB/RSS Source가 실제로 작동하는지 정기적으로 확인하고, 불필요한 Source는 비활성화합니다.",
   "제품 민감도 매트릭스는 제품 담당자와 함께 조정하고, 변경 후 영향 점수를 재계산합니다.",
   "AI가 만든 요인 점수는 근거 문장을 확인한 뒤 필요하면 사람이 수정합니다.",
-  "Fetch 로그에서 실패 Source를 확인하고 URL 변경, 접근 제한, RSS 형식 오류를 점검합니다.",
+  "Fetch 로그에서 실패 Source를 확인하고 URL 변경, 접근 제한, 데이터 형식 오류를 점검합니다.",
   "Daily Report는 영업팀 공유 전에 핵심 리스크와 기회 요인을 검토합니다."
 ];
 
@@ -97,7 +97,7 @@ export default function GuidePage() {
               영업·제품·해외사업 의사결정에 바로 쓸 수 있는 결론을 만드는 것입니다.
             </p>
             <p>
-              기본 운영 흐름은 자동 수집입니다. 관리자는 RSS Source를 관리하고, 시스템은 신규 기사를 수집한 뒤 중복을 제거하고
+              기본 운영 흐름은 자동 수집입니다. 관리자는 Weekly DB/RSS Source를 관리하고, 시스템은 신규 기사를 수집한 뒤 중복을 제거하고
               AI 분석, 점수화, 제품 영향 계산, Daily Report 업데이트까지 이어서 실행합니다.
             </p>
           </CardContent>
@@ -155,11 +155,11 @@ export default function GuidePage() {
               <Rss className="h-4 w-4 text-sky-700" />
               자동 뉴스 수집 로직
             </CardTitle>
-            <CardDescription>기본 흐름은 수동 입력이 아니라 RSS 자동 수집입니다.</CardDescription>
+            <CardDescription>기본 흐름은 수동 입력이 아니라 Weekly DB/RSS 자동 수집입니다.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm leading-6 text-slate-700">
-            <p>1. Active 상태인 RSS Source를 순서대로 조회합니다.</p>
-            <p>2. 각 Source에서 최신 기사 제목, URL, 발행일, 출처, 스니펫을 가져옵니다.</p>
+            <p>1. Active 상태인 Weekly DB/RSS Source를 순서대로 조회합니다.</p>
+            <p>2. Farmhannong Weekly DB에서는 최신 주차 카드뉴스의 원문 제목, 요약, 링크를 가져오고 RSS에서는 최신 기사 스니펫을 가져옵니다.</p>
             <p>3. 같은 URL 또는 같은 제목과 출처 조합은 중복 기사로 제외합니다.</p>
             <p>4. 신규 기사만 저장하고 AI 분석 대상으로 넘깁니다.</p>
             <p>5. Source별 오류는 로그로 남기며, 한 Source 실패가 전체 작업을 멈추지 않습니다.</p>
@@ -271,12 +271,12 @@ export default function GuidePage() {
               <CalendarClock className="h-4 w-4 text-slate-700" />
               자동화 운영
             </CardTitle>
-            <CardDescription>매주 월요일 오전 9시 기준으로 자동 수집 흐름을 갱신합니다.</CardDescription>
+            <CardDescription>매주 월요일 오전 9시 10분 기준으로 자동 수집 흐름을 갱신합니다.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm leading-6 text-slate-700">
             <p>자동 실행 API는 POST /api/jobs/fetch-news입니다.</p>
-            <p>Vercel Cron은 Asia/Seoul 월요일 오전 9시에 맞추기 위해 UTC 월요일 00:00 기준으로 설정합니다.</p>
-            <div className="rounded-md border bg-slate-50 p-3 font-mono text-xs">0 0 * * 1</div>
+            <p>Vercel Cron은 Farmhannong Agro Weekly DB의 월요일 오전 9시 업데이트 직후 연계되도록 UTC 월요일 00:10 기준으로 설정합니다.</p>
+            <div className="rounded-md border bg-slate-50 p-3 font-mono text-xs">10 0 * * 1</div>
             <p>수동으로 즉시 실행하려면 소스 또는 뉴스 화면의 Run News Fetch Now 버튼을 사용합니다.</p>
           </CardContent>
         </Card>
@@ -313,7 +313,7 @@ export default function GuidePage() {
               현재 MVP
             </div>
             <div className="space-y-2 text-sm leading-6 text-slate-700">
-              <p>RSS 자동 수집, 중복 제거, AI 분석, 제품 영향 계산, Daily Report 생성 흐름을 제공합니다.</p>
+              <p>Farmhannong Weekly DB/RSS 자동 수집, 중복 제거, AI 분석, 제품 영향 계산, Daily Report 생성 흐름을 제공합니다.</p>
               <p>Manual Add는 누락 기사 보완용으로만 사용합니다.</p>
               <p>DB가 연결되지 않은 로컬 환경에서는 샘플 데이터로 화면 구성을 확인할 수 있습니다.</p>
             </div>
