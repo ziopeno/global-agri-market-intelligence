@@ -119,6 +119,8 @@ export async function getDashboardData() {
       publishedAt: article.publishedAt
     })),
     weeklyInsights,
-    dailyScores: [...dailyScores.entries()].map(([date, score]) => ({ date, score }))
+    dailyScores: [...dailyScores.entries()]
+      .map(([date, score]) => ({ date, score }))
+      .sort((a, b) => a.date.localeCompare(b.date))
   };
 }

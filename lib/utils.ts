@@ -19,8 +19,12 @@ export function scoreTone(score: number | null | undefined) {
 
 export function formatDateTime(date: Date | string) {
   return new Intl.DateTimeFormat("ko-KR", {
-    dateStyle: "medium",
-    timeStyle: "short",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
     timeZone: "Asia/Seoul"
   }).format(new Date(date));
 }

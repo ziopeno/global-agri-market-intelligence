@@ -42,10 +42,12 @@ export function DailyScoresChart({ data }: { data: Array<{ date: string; score: 
     return <div className="flex h-48 items-center justify-center text-sm text-slate-500">최근 7일 점수 데이터가 없습니다.</div>;
   }
 
+  const orderedData = [...data].sort((a, b) => a.date.localeCompare(b.date));
+
   return (
     <div className="h-48 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+        <LineChart data={orderedData} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="date" tick={{ fontSize: 11 }} />
           <YAxis tick={{ fontSize: 12 }} />

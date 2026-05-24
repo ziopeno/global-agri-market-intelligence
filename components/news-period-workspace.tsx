@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { BarChart3, CheckSquare, ChevronDown, ExternalLink, ListChecks, RefreshCw, Sparkles, Square } from "lucide-react";
+import { BarChart3, CheckSquare, ChevronDown, ExternalLink, ListChecks, RefreshCw, Sparkles, Square, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AnalyzeButton } from "@/components/analyze-button";
 import { FactorScoreEditor } from "@/components/factor-score-editor";
@@ -454,7 +454,7 @@ function SelectedArticlesAnalyzeButton({ articleIds }: { articleIds: string[] })
         disabled={isLoading || !articleIds.length}
       >
         {isLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-        체크 기사 분석
+        스택 기사 분석
       </Button>
       {message && <span className="text-xs text-slate-500">{message}</span>}
     </div>
@@ -617,17 +617,13 @@ export function NewsPeriodWorkspace({ articles }: { articles: ArticleRow[] }) {
     return articles.filter((article) => selectedIds.has(article.id));
   }, [articles, selectedPeriod]);
 
-  useEffect(() => {
-    setCheckedArticleIds(selectedArticles.map((article) => article.id));
-  }, [selectedPeriod?.key]);
-
   const checkedIdSet = useMemo(() => new Set(checkedArticleIds), [checkedArticleIds]);
-  const checkedArticles = useMemo(
-    () => selectedArticles.filter((article) => checkedIdSet.has(article.id)),
-    [checkedIdSet, selectedArticles]
+  const stackedArticles = useMemo(
+    () => articles.filter((article) => checkedIdSet.has(article.id)),
+    [articles, checkedIdSet]
   );
   const totalScore = selectedArticles.reduce((sum, article) => sum + articleMarketScore(article), 0);
-  const checkedTotalScore = checkedArticles.reduce((sum, article) => sum + articleMarketScore(article), 0);
+  const stackedTotalScore = stackedArticles.reduce((sum, article) => sum + articleMarketScore(article), 0);
 
   function toggleCheckedArticle(articleId: string) {
     setCheckedArticleIds((current) => (
@@ -638,7 +634,11 @@ export function NewsPeriodWorkspace({ articles }: { articles: ArticleRow[] }) {
   }
 
   function checkAllVisibleArticles() {
-    setCheckedArticleIds(selectedArticles.map((article) => article.id));
+    setCheckedArticleIds((current) => {
+      const next = new Set(current);
+      for (const article of selectedArticles) next.add(article.id);
+      return [...next];
+    });
   }
 
   function clearCheckedArticles() {
@@ -666,8 +666,8 @@ export function NewsPeriodWorkspace({ articles }: { articles: ArticleRow[] }) {
                 <span className={`rounded-sm border px-2 py-1 text-xs font-semibold ${scoreTone(totalScore)}`}>
                   기간 합계 {formatScore(totalScore)}
                 </span>
-                <span className={`rounded-sm border px-2 py-1 text-xs font-semibold ${scoreTone(checkedTotalScore)}`}>
-                  체크 {checkedArticles.length}건 {formatScore(checkedTotalScore)}
+                <span className={`rounded-sm border px-2 py-1 text-xs font-semibold ${scoreTone(stackedTotalScore)}`}>
+                  스택 {stackedArticles.length}건 {formatScore(stackedTotalScore)}
                 </span>
               </div>
             </div>
@@ -730,11 +730,11 @@ export function NewsPeriodWorkspace({ articles }: { articles: ArticleRow[] }) {
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Button type="button" variant="secondary" size="sm" onClick={checkAllVisibleArticles}>
                 <CheckSquare className="h-4 w-4" />
-                전체 선택
+                현재 목록 추가
               </Button>
               <Button type="button" variant="secondary" size="sm" onClick={clearCheckedArticles}>
                 <Square className="h-4 w-4" />
-                선택 해제
+                스택 비우기
               </Button>
               <SelectedArticlesAnalyzeButton articleIds={checkedArticleIds} />
             </div>
@@ -764,14 +764,42 @@ export function NewsPeriodWorkspace({ articles }: { articles: ArticleRow[] }) {
                 </div>
               ))}
             </div>
+
+            <div className="mt-3 rounded-md border border-emerald-100 bg-emerald-50/70 p-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-xs font-semibold text-emerald-950">선택 스택</div>
+                <span className={`rounded-sm border bg-white px-2 py-0.5 text-[11px] font-semibold ${scoreTone(stackedTotalScore)}`}>
+                  {stackedArticles.length}건 · {formatScore(stackedTotalScore)}
+                </span>
+              </div>
+              <div className="mt-2 flex max-h-20 flex-wrap gap-1.5 overflow-y-auto">
+                {stackedArticles.length ? (
+                  stackedArticles.map((article) => (
+                    <button
+                      key={article.id}
+                      type="button"
+                      onClick={() => toggleCheckedArticle(article.id)}
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-emerald-200 bg-white px-2 py-1 text-left text-[11px] text-slate-700 hover:bg-emerald-50"
+                      aria-label={`${article.title} 스택에서 제거`}
+                    >
+                      <span className="shrink-0 font-semibold text-emerald-800">{weeklyCardWeekDate(article)}</span>
+                      <span className="truncate">{article.title}</span>
+                      <X className="h-3 w-3 shrink-0 text-slate-400" />
+                    </button>
+                  ))
+                ) : (
+                  <span className="text-xs text-emerald-900">여러 주차에서 필요한 기사만 체크하면 여기에 누적됩니다.</span>
+                )}
+              </div>
+            </div>
           </div>
 
           <PeriodAiPanel
-            articles={checkedArticles}
+            articles={stackedArticles}
             periodType={periodType}
-            periodLabelValue={selectedPeriod?.label || "선택 기간"}
-            totalScore={checkedTotalScore}
-            selectionLabel="체크한 기사"
+            periodLabelValue={stackedArticles.length ? "선택 스택" : selectedPeriod?.label || "선택 기간"}
+            totalScore={stackedTotalScore}
+            selectionLabel="선택 스택"
           />
         </div>
       </div>

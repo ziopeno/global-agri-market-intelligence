@@ -32,7 +32,7 @@ export function getFallbackDashboardData() {
     dailyScores: SAMPLE_ARTICLES.map((article, index) => ({
       date: article.publishedAt.toISOString().slice(0, 10),
       score: index === 0 ? -4.8 : index === 1 ? 3.6 : -2.4
-    }))
+    })).sort((a, b) => a.date.localeCompare(b.date))
   };
 }
 
