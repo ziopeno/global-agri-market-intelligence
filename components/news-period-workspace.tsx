@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { ArrowRight, BarChart3, CheckSquare, ChevronDown, ExternalLink, FileText, ListChecks, RefreshCw, Sparkles, Square, X } from "lucide-react";
+import { BarChart3, CheckSquare, ChevronDown, ExternalLink, FileText, ListChecks, RefreshCw, Sparkles, Square, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AnalyzeButton } from "@/components/analyze-button";
 import { FactorScoreEditor } from "@/components/factor-score-editor";
@@ -102,16 +102,62 @@ function sourceExcerptForFactor(article: ArticleRow, factor: any) {
   return String(textPool[0] || factor.evidence || article.title || "");
 }
 
-function analysisResultForFactor(article: ArticleRow, factor: any) {
+function hasKorean(text: string) {
+  return /[가-힣]/.test(text);
+}
+
+function numberTokens(text: string) {
+  return new Set((text.match(/\d+(?:[.,]\d+)?/g) || []).map((token) => token.replace(/[,.]/g, "")));
+}
+
+function koreanEvidenceForFactor(article: ArticleRow, factor: any, excerpt: string) {
+  if (hasKorean(excerpt)) return excerpt;
+
+  const card = parseWeeklyCardContent(article);
+  const candidates = [
+    ...card.bullets,
+    card.cardSummary,
+    article.summary,
+    factor.evidence
+  ].filter(Boolean);
+
+  if (!candidates.length) return compactText(excerpt, 220);
+
+  const excerptNumbers = numberTokens(excerpt);
+  const factorKeywords = FACTOR_KEYWORDS[factor.factorName] || [];
+  const scored = candidates.map((candidate) => {
+    const candidateText = String(candidate);
+    const candidateNumbers = numberTokens(candidateText);
+    const numberScore = [...excerptNumbers].filter((token) =>
+      [...candidateNumbers].some((candidateToken) => candidateToken.includes(token) || token.includes(candidateToken))
+    ).length;
+    const keywordScore = factorKeywords.filter((keyword) =>
+      candidateText.toLowerCase().includes(keyword.toLowerCase())
+    ).length;
+    return {
+      text: candidateText,
+      score: numberScore * 3 + keywordScore + (hasKorean(candidateText) ? 1 : 0)
+    };
+  });
+
+  const best = scored.sort((a, b) => b.score - a.score)[0];
+  if (best?.score > 1) return best.text;
+
+  return card.bullets.length ? card.bullets.slice(0, 3).join(" / ") : compactText(candidates[0], 220);
+}
+
+function marketInsightForFactor(article: ArticleRow, factor: any, koreanEvidence: string) {
   const direction = Number(factor.direction || 0);
   const score = adjustedFactorScoreValue(factor);
   const country = article.country || "해당 시장";
   const factorName = factor.factorName || article.category || "시장 신호";
-  const impactWord = direction >= 0 ? "기회" : "리스크";
   const movement = direction >= 0 ? "수요 확대 또는 시장 우호 신호" : "비용 증가, 수요 둔화 또는 규제 부담 신호";
-  const strength = Math.abs(score) >= 20 ? "강하게" : Math.abs(score) >= 8 ? "중간 수준으로" : "제한적으로";
+  const action = direction >= 0
+    ? "관련 제품의 영업 우선순위와 재고 배분을 높여 볼 수 있습니다."
+    : "가격, 원가, 규제, 수요 둔화 리스크를 먼저 점검해야 합니다.";
+  const strength = Math.abs(score) >= 20 ? "강한" : Math.abs(score) >= 8 ? "중간 수준의" : "제한적인";
 
-  return `이러한 부분 때문에 ${country}의 ${factorName}이 ${movement}로 작동해 시장에 ${impactWord} 영향을 ${strength} 줄 것으로 판단됨.`;
+  return `「${compactText(koreanEvidence, 110)}」라는 근거는 ${country}의 ${factorName}이 ${movement}로 이어질 가능성을 보여줍니다. 보정 점수 기준 ${strength} 신호이므로 ${action}`;
 }
 
 function factorFormulaSummary(factor: any) {
@@ -826,6 +872,11 @@ function ArticleCard({
           <div className="mt-3 space-y-2">
             {marketImpactReason.topFactors.map((factor: any) => (
               <div key={factor.id} className="rounded-md bg-white/75 p-2 text-xs leading-5 text-slate-700">
+                {(() => {
+                  const excerpt = sourceExcerptForFactor(article, factor);
+                  const koreanEvidence = koreanEvidenceForFactor(article, factor, excerpt);
+                  return (
+                    <>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-semibold text-slate-900">{factor.factorName}</span>
                   <span className="font-mono text-slate-600">
@@ -836,15 +887,29 @@ function ArticleCard({
                   보정 = {formatScore(adjustedFactorScoreValue(factor))} · Market Size x{Number(factor.marketSizeWeight ?? 1).toFixed(2)} · Product x{Number(factor.productRelevanceWeight ?? 1).toFixed(2)} · Recency x{Number(factor.recencyWeight ?? 1).toFixed(2)} · Evidence x{Number(factor.evidenceStrength ?? 1).toFixed(2)}
                 </div>
                 <div className="mt-2 rounded-md border border-slate-100 bg-slate-50 p-2">
-                  <div className="flex flex-col gap-2 md:flex-row md:items-start">
-                    <p className="min-w-0 flex-1 font-mono text-[11px] leading-5 text-slate-900">
-                      "{compactText(sourceExcerptForFactor(article, factor), 220)}"
-                    </p>
-                    <ArrowRight className="hidden h-4 w-4 shrink-0 text-emerald-700 md:mt-0.5 md:block" />
-                    <p className="min-w-0 flex-1 text-slate-700">{analysisResultForFactor(article, factor)}</p>
+                  <div className="grid gap-3 md:grid-cols-[1.05fr_0.95fr]">
+                    <div className="min-w-0 space-y-2">
+                      <div>
+                        <div className="text-[11px] font-semibold text-slate-500">원문 근거</div>
+                        <p className="mt-1 break-words font-mono text-[11px] leading-5 text-slate-950">"{excerpt}"</p>
+                      </div>
+                      <div>
+                        <div className="text-[11px] font-semibold text-slate-500">
+                          {hasKorean(excerpt) ? "한국어 원문" : "한국어 해석"}
+                        </div>
+                        <p className="mt-1 break-words text-xs leading-5 text-slate-800">{koreanEvidence}</p>
+                      </div>
+                    </div>
+                    <div className="min-w-0 border-t border-slate-200 pt-3 md:border-l md:border-t-0 md:pl-4 md:pt-0">
+                      <div className="text-[11px] font-semibold text-emerald-700">분석 가능한 시사점</div>
+                      <p className="mt-1 text-xs leading-5 text-slate-700">{marketInsightForFactor(article, factor, koreanEvidence)}</p>
+                    </div>
                   </div>
                   <div className="mt-2 text-[11px] font-medium text-slate-500">{factorFormulaSummary(factor)}</div>
                 </div>
+                    </>
+                  );
+                })()}
               </div>
             ))}
           </div>
