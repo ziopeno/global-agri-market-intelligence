@@ -15,6 +15,19 @@ export default async function MatrixPage() {
       include: {
         sensitivities: true,
         productImpacts: {
+          include: {
+            article: {
+              select: {
+                title: true,
+                country: true,
+                crop: true,
+                category: true,
+                publishedAt: true,
+                marketImpactScore: true,
+                adjustedMarketScore: true
+              }
+            }
+          },
           orderBy: { createdAt: "desc" },
           take: 20
         }

@@ -2,18 +2,12 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { BarChart3, CheckSquare, ChevronDown, ExternalLink, ListChecks, RefreshCw, Sparkles, Square, X } from "lucide-react";
+import { ArrowRight, BarChart3, CheckSquare, ChevronDown, ExternalLink, FileText, ListChecks, RefreshCw, Sparkles, Square, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AnalyzeButton } from "@/components/analyze-button";
 import { FactorScoreEditor } from "@/components/factor-score-editor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DURATION_SCORE_CRITERIA,
-  IMPACT_SCORE_CRITERIA,
-  LIKELIHOOD_SCORE_CRITERIA,
-  RELIABILITY_SCORE_CRITERIA
-} from "@/lib/constants";
 import { cn, formatDateTime, formatScore, scoreTone } from "@/lib/utils";
 
 const FARMHANNONG_AGRO_WEEKLY_URL = "https://ziopeno.github.io/farmhannong-agro-weekly-db/";
@@ -82,7 +76,7 @@ function compactText(value: string | null | undefined, maxLength = 128) {
 function sentenceCandidates(text: string) {
   return text
     .split(/(?<=[.!?。])\s+|\n|•/)
-    .map((line) => compactText(line, 160))
+    .map((line) => String(line || "").replace(/\s+/g, " ").trim())
     .filter(Boolean);
 }
 
@@ -90,10 +84,10 @@ function sourceExcerptForFactor(article: ArticleRow, factor: any) {
   const card = parseWeeklyCardContent(article);
   const textPool = [
     card.rawSummary,
+    card.rawTitle,
     card.cardSummary,
     article.originalText,
     article.rawContent,
-    article.summary,
     article.title
   ].filter(Boolean);
   const keywords = FACTOR_KEYWORDS[factor.factorName] || [factor.factorName];
@@ -105,52 +99,117 @@ function sourceExcerptForFactor(article: ArticleRow, factor: any) {
     if (match) return match;
   }
 
-  return compactText(textPool[0] || factor.evidence || article.title, 128);
+  return String(textPool[0] || factor.evidence || article.title || "");
 }
 
-function translatedEvidenceForFactor(article: ArticleRow, factor: any) {
-  const card = parseWeeklyCardContent(article);
-  return compactText(factor.evidence || card.bullets[0] || card.cardSummary || article.summary || article.title, 128);
-}
-
-function criteriaText<T extends readonly { score: number; criterion: string }[]>(rows: T, score: number) {
-  return rows.find((row) => Number(row.score) === Number(score))?.criterion || "정의된 기준에 맞춰 판단했습니다.";
-}
-
-function scoreBreakdownRows(article: ArticleRow, factor: any) {
-  const excerpt = sourceExcerptForFactor(article, factor);
-  const translated = translatedEvidenceForFactor(article, factor);
+function analysisResultForFactor(article: ArticleRow, factor: any) {
   const direction = Number(factor.direction || 0);
-  const reliabilitySource = compactText(article.newsSource?.name || article.source, 80);
-  const directionMeaning = direction > 0 ? "시장 기회 또는 수요 확대 방향" : "시장 리스크 또는 수요 둔화 방향";
+  const score = adjustedFactorScoreValue(factor);
+  const country = article.country || "해당 시장";
+  const factorName = factor.factorName || article.category || "시장 신호";
+  const impactWord = direction >= 0 ? "기회" : "리스크";
+  const movement = direction >= 0 ? "수요 확대 또는 시장 우호 신호" : "비용 증가, 수요 둔화 또는 규제 부담 신호";
+  const strength = Math.abs(score) >= 20 ? "강하게" : Math.abs(score) >= 8 ? "중간 수준으로" : "제한적으로";
 
+  return `이러한 부분 때문에 ${country}의 ${factorName}이 ${movement}로 작동해 시장에 ${impactWord} 영향을 ${strength} 줄 것으로 판단됨.`;
+}
+
+function factorFormulaSummary(factor: any) {
   return [
-    {
-      label: "Direction",
-      value: direction > 0 ? "+1" : "-1",
-      text: `원문 "${excerpt}" → 번역/해석 "${translated}" → ${directionMeaning}으로 판단했습니다.`
-    },
-    {
-      label: "Impact",
-      value: `${Number(factor.impact || 0)}점`,
-      text: `원문 "${excerpt}" → 번역/해석 "${translated}" → ${criteriaText(IMPACT_SCORE_CRITERIA, Number(factor.impact || 0))}`
-    },
-    {
-      label: "Likelihood",
-      value: `${Number(factor.likelihood || 0)}점`,
-      text: `원문 "${excerpt}" → 번역/해석 "${translated}" → ${criteriaText(LIKELIHOOD_SCORE_CRITERIA, Number(factor.likelihood || 0))}`
-    },
-    {
-      label: "Duration",
-      value: `${Number(factor.duration || 0).toFixed(1)}x`,
-      text: `원문 "${excerpt}" → 번역/해석 "${translated}" → ${criteriaText(DURATION_SCORE_CRITERIA, Number(factor.duration || 0))}`
-    },
-    {
-      label: "Reliability",
-      value: `${Number(factor.reliability || 0).toFixed(1)}x`,
-      text: `출처 "${reliabilitySource}" → 원문 일부 "${excerpt}" → ${criteriaText(RELIABILITY_SCORE_CRITERIA, Number(factor.reliability || 0))}`
+    `Impact ${Number(factor.impact || 0)}`,
+    `Likelihood ${Number(factor.likelihood || 0)}`,
+    `Duration x${Number(factor.duration || 0).toFixed(1)}`,
+    `Reliability x${Number(factor.reliability || 0).toFixed(1)}`,
+    `Adjusted ${formatScore(adjustedFactorScoreValue(factor))}`
+  ].join(" · ");
+}
+
+function evidenceExcerptsForArticle(article: ArticleRow) {
+  const factors = article.factors || [];
+  const seen = new Set<string>();
+
+  return factors
+    .map((factor: any) => sourceExcerptForFactor(article, factor))
+    .filter((excerpt: string) => excerpt && excerpt.length > 12)
+    .filter((excerpt: string) => {
+      const key = compactText(excerpt, 90).toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 6);
+}
+
+function normalizeWithMap(text: string) {
+  let normalized = "";
+  const map: number[] = [];
+  let previousWasSpace = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (/\s/.test(char)) {
+      if (!previousWasSpace) {
+        normalized += " ";
+        map.push(index);
+        previousWasSpace = true;
+      }
+      continue;
     }
-  ];
+    normalized += char;
+    map.push(index);
+    previousWasSpace = false;
+  }
+
+  return { normalized: normalized.trim(), map };
+}
+
+function highlightRanges(text: string, excerpts: string[]) {
+  const textMap = normalizeWithMap(text);
+  const lowerText = textMap.normalized.toLowerCase();
+  const ranges: Array<{ start: number; end: number }> = [];
+
+  for (const excerpt of excerpts) {
+    const excerptText = normalizeWithMap(excerpt).normalized.toLowerCase();
+    if (excerptText.length < 12) continue;
+    const index = lowerText.indexOf(excerptText);
+    if (index < 0) continue;
+    const start = textMap.map[index] ?? 0;
+    const endIndex = textMap.map[index + excerptText.length - 1] ?? start;
+    ranges.push({ start, end: endIndex + 1 });
+  }
+
+  return ranges
+    .sort((a, b) => a.start - b.start)
+    .reduce<Array<{ start: number; end: number }>>((merged, range) => {
+      const last = merged[merged.length - 1];
+      if (last && range.start <= last.end) {
+        last.end = Math.max(last.end, range.end);
+      } else {
+        merged.push({ ...range });
+      }
+      return merged;
+    }, []);
+}
+
+function HighlightedOriginalText({ text, excerpts }: { text: string; excerpts: string[] }) {
+  const ranges = highlightRanges(text, excerpts);
+  if (!ranges.length) {
+    return <>{text}</>;
+  }
+
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+  ranges.forEach((range, index) => {
+    if (range.start > cursor) nodes.push(text.slice(cursor, range.start));
+    nodes.push(
+      <span key={`highlight-${index}`} className="font-semibold text-rose-700">
+        {text.slice(range.start, range.end)}
+      </span>
+    );
+    cursor = range.end;
+  });
+  if (cursor < text.length) nodes.push(text.slice(cursor));
+  return <>{nodes}</>;
 }
 
 function buildMarketImpactReason(article: ArticleRow) {
@@ -170,7 +229,7 @@ function buildMarketImpactReason(article: ArticleRow) {
 
   return {
     total,
-    formula: "각 항목은 원문 일부와 번역/해석을 기준으로 판단한 Factor Score에 시장 규모, 제품 관련성, 최신성, 근거 강도를 곱해 보정했습니다.",
+    formula: "각 항목은 원문 판단 근거를 기준으로 계산한 Factor Score에 시장 규모, 제품 관련성, 최신성, 근거 강도를 곱해 보정했습니다.",
     topFactors
   };
 }
@@ -576,6 +635,82 @@ function SelectedArticlesAnalyzeButton({ articleIds }: { articleIds: string[] })
   );
 }
 
+function ArticleOriginalModal({
+  article,
+  excerpts,
+  onClose
+}: {
+  article: ArticleRow;
+  excerpts: string[];
+  onClose: () => void;
+}) {
+  const originalText = article.rawContent || article.originalText || article.summary || article.title;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4" role="dialog" aria-modal="true">
+      <div className="flex max-h-[88vh] w-full max-w-4xl flex-col rounded-lg border bg-white shadow-2xl">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b px-5 py-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone="blue">{article.source}</Badge>
+              {article.country && <Badge>{article.country}</Badge>}
+              {article.category && <Badge tone="amber">{article.category}</Badge>}
+            </div>
+            <h2 className="mt-2 text-base font-semibold leading-6 text-slate-950">{article.title}</h2>
+            <div className="mt-1 text-xs text-slate-500">{formatDateTime(article.publishedAt)}</div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border text-slate-600 hover:bg-slate-50"
+            aria-label="원문 팝업 닫기"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          {excerpts.length ? (
+            <div className="mb-4 rounded-md border border-rose-100 bg-rose-50 p-3">
+              <div className="text-sm font-semibold text-rose-900">분석 판단에 사용한 원문 부분</div>
+              <div className="mt-2 space-y-2">
+                {excerpts.map((excerpt) => (
+                  <p key={excerpt} className="text-sm leading-6 text-rose-800">
+                    {excerpt}
+                  </p>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="rounded-md border bg-slate-50 p-4">
+            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
+              <FileText className="h-4 w-4" />
+              저장된 원문 전체
+            </div>
+            <div className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-800">
+              <HighlightedOriginalText text={originalText} excerpts={excerpts} />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-white px-5 py-4">
+          <p className="text-xs text-slate-500">빨간색 문장은 AI가 점수 판단에 사용한 근거 문장입니다.</p>
+          <a
+            href={article.url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-9 items-center gap-2 rounded-md border bg-white px-3 text-sm font-medium text-slate-800 hover:bg-slate-50"
+          >
+            원문 기사 링크 찾아가기
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ArticleCard({
   article,
   checked,
@@ -585,12 +720,14 @@ function ArticleCard({
   checked: boolean;
   onToggleChecked: (articleId: string) => void;
 }) {
+  const [isOriginalOpen, setIsOriginalOpen] = useState(false);
   const factors = article.factors || [];
   const relatedProducts = (article.productImpacts || [])
     .filter((impact: any) => impact.productImpactScore !== 0)
     .slice(0, 4);
   const marketImpactReason = buildMarketImpactReason(article);
   const weeklyCardArticle = isWeeklyCardArticle(article);
+  const evidenceExcerpts = evidenceExcerptsForArticle(article);
 
   return (
     <article id={`article-${article.id}`} className="scroll-mt-6 rounded-lg border bg-white p-4">
@@ -629,15 +766,14 @@ function ArticleCard({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <AnalyzeButton articleId={article.id} />
-          <a
-            href={article.url}
-            target="_blank"
-            rel="noreferrer"
+          <button
+            type="button"
+            onClick={() => setIsOriginalOpen(true)}
             className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm text-slate-700 hover:bg-slate-50"
           >
-            <ExternalLink className="h-4 w-4" />
-            원문
-          </a>
+            <FileText className="h-4 w-4" />
+            기사 원문
+          </button>
         </div>
       </div>
 
@@ -699,12 +835,15 @@ function ArticleCard({
                 <div className="mt-1 font-mono text-slate-500">
                   보정 = {formatScore(adjustedFactorScoreValue(factor))} · Market Size x{Number(factor.marketSizeWeight ?? 1).toFixed(2)} · Product x{Number(factor.productRelevanceWeight ?? 1).toFixed(2)} · Recency x{Number(factor.recencyWeight ?? 1).toFixed(2)} · Evidence x{Number(factor.evidenceStrength ?? 1).toFixed(2)}
                 </div>
-                <div className="mt-2 space-y-1">
-                  {scoreBreakdownRows(article, factor).map((row) => (
-                    <p key={row.label} className="text-slate-600">
-                      <span className="font-semibold text-slate-900">{row.label} {row.value}:</span> {row.text}
+                <div className="mt-2 rounded-md border border-slate-100 bg-slate-50 p-2">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-start">
+                    <p className="min-w-0 flex-1 font-mono text-[11px] leading-5 text-slate-900">
+                      "{compactText(sourceExcerptForFactor(article, factor), 220)}"
                     </p>
-                  ))}
+                    <ArrowRight className="hidden h-4 w-4 shrink-0 text-emerald-700 md:mt-0.5 md:block" />
+                    <p className="min-w-0 flex-1 text-slate-700">{analysisResultForFactor(article, factor)}</p>
+                  </div>
+                  <div className="mt-2 text-[11px] font-medium text-slate-500">{factorFormulaSummary(factor)}</div>
                 </div>
               </div>
             ))}
@@ -718,12 +857,18 @@ function ArticleCard({
           marketImpactReason={marketImpactReason}
         />
       )}
+      {isOriginalOpen && (
+        <ArticleOriginalModal
+          article={article}
+          excerpts={evidenceExcerpts}
+          onClose={() => setIsOriginalOpen(false)}
+        />
+      )}
     </article>
   );
 }
 
 export function NewsPeriodWorkspace({ articles }: { articles: ArticleRow[] }) {
-  const [isListOpen, setIsListOpen] = useState(false);
   const [periodType, setPeriodType] = useState<PeriodType>("week");
   const periodOptions = useMemo(() => buildPeriodOptions(articles, periodType), [articles, periodType]);
   const [selectedPeriodKey, setSelectedPeriodKey] = useState("");
@@ -776,12 +921,7 @@ export function NewsPeriodWorkspace({ articles }: { articles: ArticleRow[] }) {
 
   return (
     <section className="rounded-lg border bg-white shadow-sm">
-      <button
-        type="button"
-        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
-        onClick={() => setIsListOpen((current) => !current)}
-        aria-expanded={isListOpen}
-      >
+      <div className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left">
         <div className="flex min-w-0 items-center gap-2">
           <ListChecks className="h-4 w-4 shrink-0 text-emerald-700" />
           <div className="min-w-0">
@@ -798,12 +938,10 @@ export function NewsPeriodWorkspace({ articles }: { articles: ArticleRow[] }) {
           <span className={`hidden rounded-sm border px-2 py-1 text-xs font-semibold sm:inline-flex ${scoreTone(stackedTotalScore)}`}>
             스택 {formatScore(stackedTotalScore)}
           </span>
-          <ChevronDown className={cn("h-5 w-5 text-slate-500 transition", isListOpen && "rotate-180")} />
         </div>
-      </button>
+      </div>
 
-      {isListOpen && (
-        <div className="space-y-4 border-t p-4">
+      <div className="space-y-4 border-t p-4">
           <div className="grid gap-4 lg:grid-cols-[1.45fr_0.95fr]">
             <div>
               <div className="flex flex-wrap gap-2">
@@ -951,8 +1089,7 @@ export function NewsPeriodWorkspace({ articles }: { articles: ArticleRow[] }) {
               <div className="rounded-md border border-dashed p-6 text-sm text-slate-500">선택한 기간에 저장된 기사가 없습니다.</div>
             )}
           </div>
-        </div>
-      )}
+      </div>
     </section>
   );
 }

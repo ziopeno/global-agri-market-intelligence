@@ -263,6 +263,8 @@ function fallbackDailyReport(articles: ReportArticle[]): DailyReportContent {
     evidence: sortedArticles.map((article) => ({
       article_id: article.id,
       title: article.title,
+      source: article.source,
+      url: article.url,
       market_impact_score: scoreForArticle(article),
       factor_scores: article.factors.map((factor) => ({
         factor_name: factor.factorName,
@@ -278,6 +280,8 @@ function serializeReportInput(articles: ReportArticle[]) {
     articles.map((article) => ({
       id: article.id,
       title: article.title,
+      source: article.source,
+      url: article.url,
       country: article.country,
       crop: article.crop,
       category: article.category,

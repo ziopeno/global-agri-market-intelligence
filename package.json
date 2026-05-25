@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/next-with-wasm.mjs dev",
-    "build": "node scripts/next-with-wasm.mjs build",
+    "build": "prisma generate && node scripts/next-with-wasm.mjs build",
     "start": "next start",
     "lint": "next lint",
     "prisma:generate": "prisma generate",
