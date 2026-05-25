@@ -97,6 +97,12 @@ function normalizeTitle(title: string) {
   return title.replace(/^\d+\.\s*/, "").trim();
 }
 
+function freshFetchUrl(url: string) {
+  const nextUrl = new URL(url);
+  nextUrl.searchParams.set("_agri_mi_fetch", Date.now().toString());
+  return nextUrl.toString();
+}
+
 function selectedWeekDates(database: FarmhannongWeeklyDatabase) {
   const sortedDates = Object.keys(database).sort().reverse();
   const configuredDates = (process.env.WEEKLY_CARD_NEWS_DATES || "")
@@ -129,8 +135,11 @@ export async function collectFarmhannongWeeklyArticles(
   const timeoutMs = Math.max(1000, Number(process.env.WEEKLY_CARD_NEWS_FETCH_TIMEOUT_MS || 8000));
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  const response = await fetch(url, {
+  const response = await fetch(freshFetchUrl(url), {
+    cache: "no-store",
     headers: {
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
       "User-Agent": "AgriMarketIntelligence/0.1"
     },
     signal: controller.signal,

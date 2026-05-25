@@ -26,11 +26,11 @@ async function checkVercelCron() {
       addCheck("Vercel Cron", "fail", "vercel.json에 /api/jobs/fetch-news cron이 없습니다.");
       return;
     }
-    if (cron.schedule !== "10 0 * * 1") {
-      addCheck("Vercel Cron", "warn", `현재 schedule은 ${cron.schedule}입니다. KST 월요일 09:10은 10 0 * * 1입니다.`);
+    if (cron.schedule !== "0 1 * * 1") {
+      addCheck("Vercel Cron", "warn", `현재 schedule은 ${cron.schedule}입니다. KST 월요일 10:00은 0 1 * * 1입니다.`);
       return;
     }
-    addCheck("Vercel Cron", "pass", "매주 월요일 Asia/Seoul 오전 9시 10분 실행 설정이 있습니다.");
+    addCheck("Vercel Cron", "pass", "매주 월요일 Asia/Seoul 오전 10시 실행 설정이 있습니다.");
   } catch (error) {
     addCheck("Vercel Cron", "fail", error instanceof Error ? error.message : "vercel.json 확인 실패");
   }

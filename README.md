@@ -263,16 +263,16 @@ curl -X POST "http://localhost:3000/api/jobs/fetch-news?secret=change-me"
 
 ## Cron 설정
 
-Vercel Cron은 GET 요청을 보내므로 `vercel.json`은 `/api/jobs/fetch-news`를 매주 월요일 UTC 00:10에 호출합니다.
+Vercel Cron은 GET 요청을 보내므로 `vercel.json`은 `/api/jobs/fetch-news`를 매주 월요일 UTC 01:00에 호출합니다.
 
 ```json
 {
   "path": "/api/jobs/fetch-news",
-  "schedule": "10 0 * * 1"
+  "schedule": "0 1 * * 1"
 }
 ```
 
-UTC 월요일 00:10은 Asia/Seoul 기준 월요일 오전 9시 10분입니다. 카드뉴스 사이트의 월요일 오전 9시 업데이트 직후 연계되도록 10분 뒤 실행합니다. API는 `POST /api/jobs/fetch-news`를 중심으로 제공하고, Vercel Cron 호환을 위해 같은 경로의 GET도 허용합니다.
+UTC 월요일 01:00은 Asia/Seoul 기준 월요일 오전 10시입니다. 카드뉴스 사이트의 월요일 오전 9시 업데이트와 GitHub Pages 캐시 반영 시간을 감안해 1시간 뒤 실행합니다. 수집기는 매번 캐시 우회 파라미터를 붙여 최신 HTML을 확인합니다. API는 `POST /api/jobs/fetch-news`를 중심으로 제공하고, Vercel Cron 호환을 위해 같은 경로의 GET도 허용합니다.
 
 해당 엔드포인트는 매주 아래 작업을 수행합니다.
 
