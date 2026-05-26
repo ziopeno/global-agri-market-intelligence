@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowUpRight, Rss, ShieldAlert, Sparkles } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Rss } from "lucide-react";
+import { DashboardSignalCards } from "@/components/dashboard-signal-cards";
 import { DailyScoresChart, ProductImpactChart } from "@/components/impact-charts";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,36 +36,12 @@ export default async function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>위험 신호</CardTitle>
-            <CardDescription>국가별 음수 영향 누적</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-3">
-              <ShieldAlert className="h-8 w-8 text-rose-600" />
-              <div>
-                <div className="text-2xl font-semibold">{data.countryRisk.filter((item) => item.risk > 0).length}</div>
-                <div className="text-sm text-slate-500">리스크 국가/권역</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>반복 신호</CardTitle>
-            <CardDescription>최근 카테고리 빈도</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-3">
-              <Sparkles className="h-8 w-8 text-sky-600" />
-              <div>
-                <div className="text-2xl font-semibold">{data.weeklyInsights.length}</div>
-                <div className="text-sm text-slate-500">주요 인사이트</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <DashboardSignalCards
+          riskCount={data.countryRisk.filter((item) => item.risk > 0).length}
+          riskArticles={data.riskSignalArticles}
+          repeatedCount={data.repeatedSignals.length}
+          repeatedSignals={data.repeatedSignals}
+        />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
@@ -138,7 +115,7 @@ export default async function DashboardPage() {
                   </div>
                   <div className="mt-3 flex items-start justify-between gap-4">
                     <div>
-                      <Link href={`/news#${article.id}`} className="font-semibold text-slate-950 hover:text-primary">
+                      <Link href={`/news#article-${article.id}`} className="font-semibold text-slate-950 hover:text-primary">
                         {article.title}
                       </Link>
                       <p className="mt-1 line-clamp-2 text-sm text-slate-600">{article.summary || "아직 AI 분석 전입니다."}</p>

@@ -948,6 +948,7 @@ export function NewsPeriodWorkspace({ articles }: { articles: ArticleRow[] }) {
   const periodOptions = useMemo(() => buildPeriodOptions(articles, periodType), [articles, periodType]);
   const [selectedPeriodKey, setSelectedPeriodKey] = useState("");
   const [checkedArticleIds, setCheckedArticleIds] = useState<string[]>([]);
+  const [pendingScrollArticleId, setPendingScrollArticleId] = useState("");
   const selectedPeriod = periodOptions.find((option) => option.key === selectedPeriodKey) || periodOptions[0];
 
   useEffect(() => {
@@ -956,11 +957,48 @@ export function NewsPeriodWorkspace({ articles }: { articles: ArticleRow[] }) {
     }
   }, [periodOptions, selectedPeriodKey]);
 
+  useEffect(() => {
+    function applyArticleHash() {
+      const hash = window.location.hash.replace(/^#/, "");
+      if (!hash.startsWith("article-")) return;
+
+      const articleId = hash.replace(/^article-/, "");
+      const targetArticle = articles.find((article) => article.id === articleId);
+      if (!targetArticle) return;
+
+      if (periodType !== "week") setPeriodType("week");
+      setSelectedPeriodKey(periodKey(targetArticle, "week"));
+      setPendingScrollArticleId(articleId);
+    }
+
+    applyArticleHash();
+    window.addEventListener("hashchange", applyArticleHash);
+    return () => window.removeEventListener("hashchange", applyArticleHash);
+  }, [articles, periodType]);
+
   const selectedArticles = useMemo(() => {
     if (!selectedPeriod) return [];
     const selectedIds = new Set(selectedPeriod.articleIds);
     return articles.filter((article) => selectedIds.has(article.id));
   }, [articles, selectedPeriod]);
+
+  useEffect(() => {
+    if (!pendingScrollArticleId) return;
+
+    const timer = window.setTimeout(() => {
+      const element = document.getElementById(`article-${pendingScrollArticleId}`);
+      if (!element) return;
+
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      element.classList.add("ring-2", "ring-emerald-400", "ring-offset-2");
+      window.setTimeout(() => {
+        element.classList.remove("ring-2", "ring-emerald-400", "ring-offset-2");
+      }, 1800);
+      setPendingScrollArticleId("");
+    }, 120);
+
+    return () => window.clearTimeout(timer);
+  }, [pendingScrollArticleId, selectedPeriodKey, selectedArticles]);
 
   const checkedIdSet = useMemo(() => new Set(checkedArticleIds), [checkedArticleIds]);
   const stackedArticles = useMemo(
@@ -992,6 +1030,9 @@ export function NewsPeriodWorkspace({ articles }: { articles: ArticleRow[] }) {
 
   function jumpToArticle(articleId: string) {
     document.getElementById(`article-${articleId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (window.location.hash !== `#article-${articleId}`) {
+      window.history.replaceState(null, "", `#article-${articleId}`);
+    }
   }
 
   return (

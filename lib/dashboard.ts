@@ -64,6 +64,7 @@ export async function getDashboardData() {
     }
   >();
   const categoryCounts = new Map<string, number>();
+  const categoryArticles = new Map<string, typeof articles>();
   const dailyScores = new Map<string, number>();
 
   for (const article of articles) {
@@ -89,6 +90,7 @@ export async function getDashboardData() {
 
     if (article.category) {
       categoryCounts.set(article.category, (categoryCounts.get(article.category) || 0) + 1);
+      categoryArticles.set(article.category, [...(categoryArticles.get(article.category) || []), article]);
     }
 
     if (article.publishedAt >= sevenDaysAgo || article.createdAt >= sevenDaysAgo) {
@@ -133,25 +135,45 @@ export async function getDashboardData() {
     .slice(0, 5)
     .map(([category, count]) => `${category} 신호 ${count}건 반복`);
 
+  const serializeArticle = (article: (typeof articles)[number]) => ({
+    id: article.id,
+    title: article.title,
+    source: article.source,
+    country: article.country,
+    crop: article.crop,
+    category: article.category,
+    url: article.url,
+    summary: article.summary,
+    marketImpactScore: article.marketImpactScore,
+    adjustedMarketScore: scoreForArticle(article),
+    publishedAt: article.publishedAt.toISOString()
+  });
+
+  const repeatedSignals = [...categoryCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([category, count]) => ({
+      category,
+      count,
+      articles: (categoryArticles.get(category) || [])
+        .sort((a, b) => Math.abs(scoreForArticle(b)) - Math.abs(scoreForArticle(a)))
+        .slice(0, 12)
+        .map(serializeArticle)
+    }));
+
   return {
     todayMarketImpact: Number(todayMarketImpact.toFixed(2)),
     articleCount: articles.length,
     analyzedCount: articles.filter((article) => article.summary).length,
     productRanking,
     countryRisk,
-    keyNews: articles.slice(0, 8).map((article) => ({
-      id: article.id,
-      title: article.title,
-      source: article.source,
-      country: article.country,
-      crop: article.crop,
-      category: article.category,
-      url: article.url,
-      summary: article.summary,
-      marketImpactScore: article.marketImpactScore,
-      adjustedMarketScore: scoreForArticle(article),
-      publishedAt: article.publishedAt
-    })),
+    keyNews: articles.slice(0, 8).map(serializeArticle),
+    riskSignalArticles: articles
+      .filter((article) => scoreForArticle(article) < 0)
+      .sort((a, b) => scoreForArticle(a) - scoreForArticle(b))
+      .slice(0, 20)
+      .map(serializeArticle),
+    repeatedSignals,
     weeklyInsights,
     dailyScores: [...dailyScores.entries()]
       .map(([date, score]) => ({ date, score }))
