@@ -110,18 +110,20 @@ function numberTokens(text: string) {
   return new Set((text.match(/\d+(?:[.,]\d+)?/g) || []).map((token) => token.replace(/[,.]/g, "")));
 }
 
+function subjectParticle(value: string) {
+  const lastChar = value.trim().slice(-1);
+  const code = lastChar.charCodeAt(0);
+  if (code < 0xac00 || code > 0xd7a3) return "이";
+  return (code - 0xac00) % 28 === 0 ? "가" : "이";
+}
+
 function koreanEvidenceForFactor(article: ArticleRow, factor: any, excerpt: string) {
   if (hasKorean(excerpt)) return excerpt;
 
   const card = parseWeeklyCardContent(article);
-  const candidates = [
-    ...card.bullets,
-    card.cardSummary,
-    article.summary,
-    factor.evidence
-  ].filter(Boolean);
+  const candidates = [...card.bullets, card.cardSummary].filter(Boolean);
 
-  if (!candidates.length) return compactText(excerpt, 220);
+  if (!candidates.length) return "저장된 카드뉴스 데이터에 한국어 해석문이 없습니다.";
 
   const excerptNumbers = numberTokens(excerpt);
   const factorKeywords = FACTOR_KEYWORDS[factor.factorName] || [];
@@ -143,21 +145,27 @@ function koreanEvidenceForFactor(article: ArticleRow, factor: any, excerpt: stri
   const best = scored.sort((a, b) => b.score - a.score)[0];
   if (best?.score > 1) return best.text;
 
-  return card.bullets.length ? card.bullets.slice(0, 3).join(" / ") : compactText(candidates[0], 220);
+  return card.bullets.length ? card.bullets.slice(0, 3).join(" / ") : String(candidates[0]);
 }
 
 function marketInsightForFactor(article: ArticleRow, factor: any, koreanEvidence: string) {
   const direction = Number(factor.direction || 0);
-  const score = adjustedFactorScoreValue(factor);
   const country = article.country || "해당 시장";
   const factorName = factor.factorName || article.category || "시장 신호";
   const movement = direction >= 0 ? "수요 확대 또는 시장 우호 신호" : "비용 증가, 수요 둔화 또는 규제 부담 신호";
   const action = direction >= 0
     ? "관련 제품의 영업 우선순위와 재고 배분을 높여 볼 수 있습니다."
     : "가격, 원가, 규제, 수요 둔화 리스크를 먼저 점검해야 합니다.";
-  const strength = Math.abs(score) >= 20 ? "강한" : Math.abs(score) >= 8 ? "중간 수준의" : "제한적인";
 
-  return `「${compactText(koreanEvidence, 110)}」라는 근거는 ${country}의 ${factorName}이 ${movement}로 이어질 가능성을 보여줍니다. 보정 점수 기준 ${strength} 신호이므로 ${action}`;
+  return `「${compactText(koreanEvidence, 110)}」라는 내용은 ${country}의 ${factorName}${subjectParticle(factorName)} ${movement}로 이어질 수 있음을 시사합니다. 따라서 ${action}`;
+}
+
+function scoreAssessmentForFactor(factor: any) {
+  const score = adjustedFactorScoreValue(factor);
+  const strength = Math.abs(score) >= 20 ? "강한" : Math.abs(score) >= 8 ? "중간 수준의" : "제한적인";
+  const direction = Number(factor.direction || 0) >= 0 ? "긍정" : "부정";
+
+  return `점수 판단: ${direction} 방향, 보정 점수 ${formatScore(score)}로 ${strength} 영향입니다. ${factorFormulaSummary(factor)}`;
 }
 
 function factorFormulaSummary(factor: any) {
@@ -903,9 +911,11 @@ function ArticleCard({
                     <div className="min-w-0 border-t border-slate-200 pt-3 md:border-l md:border-t-0 md:pl-4 md:pt-0">
                       <div className="text-[11px] font-semibold text-emerald-700">분석 가능한 시사점</div>
                       <p className="mt-1 text-xs leading-5 text-slate-700">{marketInsightForFactor(article, factor, koreanEvidence)}</p>
+                      <p className="mt-3 border-t border-slate-200 pt-2 text-[11px] font-medium leading-5 text-slate-500">
+                        {scoreAssessmentForFactor(factor)}
+                      </p>
                     </div>
                   </div>
-                  <div className="mt-2 text-[11px] font-medium text-slate-500">{factorFormulaSummary(factor)}</div>
                 </div>
                     </>
                   );
