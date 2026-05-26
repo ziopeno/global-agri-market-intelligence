@@ -4,6 +4,34 @@ import { scoreForArticle } from "@/lib/score-adjustments";
 import { ensureCountryWeightSeeds, ensureProductSeeds } from "@/lib/seed";
 import { endOfKstDay, startOfKstDay } from "@/lib/utils";
 
+function originalUrlFromRawContent(rawContent?: string | null) {
+  const text = rawContent || "";
+  const match = text.match(/원문 링크:\s*(https?:\/\/\S+)/);
+  return match?.[1] || null;
+}
+
+function kstDateParts(dateValue: Date | string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(new Date(dateValue));
+  return {
+    year: Number(parts.find((part) => part.type === "year")?.value),
+    month: Number(parts.find((part) => part.type === "month")?.value),
+    day: Number(parts.find((part) => part.type === "day")?.value)
+  };
+}
+
+function weekStartYmd(dateValue: Date | string) {
+  const { year, month, day } = kstDateParts(dateValue);
+  const pureDate = new Date(Date.UTC(year, month - 1, day));
+  const dayOfWeek = pureDate.getUTCDay();
+  pureDate.setUTCDate(pureDate.getUTCDate() - ((dayOfWeek + 6) % 7));
+  return `${pureDate.getUTCFullYear()}-${String(pureDate.getUTCMonth() + 1).padStart(2, "0")}-${String(pureDate.getUTCDate()).padStart(2, "0")}`;
+}
+
 export async function getDashboardData() {
   try {
     await Promise.all([ensureProductSeeds(), ensureCountryWeightSeeds()]);
@@ -17,7 +45,7 @@ export async function getDashboardData() {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const [articles, todayArticles, countryWeights] = await Promise.all([
+  const [articles, todayArticles, countryWeights, chartArticles] = await Promise.all([
     prisma.article.findMany({
       where: {
         OR: [{ publishedAt: { gte: thirtyDaysAgo } }, { createdAt: { gte: thirtyDaysAgo } }]
@@ -46,7 +74,17 @@ export async function getDashboardData() {
       orderBy: { publishedAt: "desc" },
       take: 30
     }),
-    prisma.countryBusinessWeight.findMany()
+    prisma.countryBusinessWeight.findMany(),
+    prisma.article.findMany({
+      select: {
+        publishedAt: true,
+        createdAt: true,
+        marketImpactScore: true,
+        adjustedMarketScore: true
+      },
+      orderBy: { publishedAt: "desc" },
+      take: 6000
+    })
   ]);
 
   const countryWeightByName = new Map(countryWeights.map((weight) => [weight.country, weight]));
@@ -66,6 +104,7 @@ export async function getDashboardData() {
   const categoryCounts = new Map<string, number>();
   const categoryArticles = new Map<string, typeof articles>();
   const dailyScores = new Map<string, number>();
+  const weeklyScores = new Map<string, { score: number; articleCount: number }>();
 
   for (const article of articles) {
     const country = article.country || "Global";
@@ -106,6 +145,14 @@ export async function getDashboardData() {
     }
   }
 
+  for (const article of chartArticles) {
+    const key = weekStartYmd(article.publishedAt);
+    const current = weeklyScores.get(key) || { score: 0, articleCount: 0 };
+    current.score = Number((current.score + scoreForArticle(article)).toFixed(2));
+    current.articleCount += 1;
+    weeklyScores.set(key, current);
+  }
+
   const productRanking = [...productScores.entries()]
     .map(([name, score]) => ({ name, score }))
     .sort((a, b) => Math.abs(b.score) - Math.abs(a.score))
@@ -143,6 +190,7 @@ export async function getDashboardData() {
     crop: article.crop,
     category: article.category,
     url: article.url,
+    originalUrl: originalUrlFromRawContent(article.rawContent) || article.url,
     summary: article.summary,
     marketImpactScore: article.marketImpactScore,
     adjustedMarketScore: scoreForArticle(article),
@@ -177,6 +225,13 @@ export async function getDashboardData() {
     weeklyInsights,
     dailyScores: [...dailyScores.entries()]
       .map(([date, score]) => ({ date, score }))
+      .sort((a, b) => a.date.localeCompare(b.date)),
+    weeklyScores: [...weeklyScores.entries()]
+      .map(([date, value]) => ({
+        date,
+        score: Number(value.score.toFixed(2)),
+        articleCount: value.articleCount
+      }))
       .sort((a, b) => a.date.localeCompare(b.date))
   };
 }

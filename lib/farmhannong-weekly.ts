@@ -84,6 +84,7 @@ function categoryFromTag(tag?: string) {
 function buildArticleText(item: FarmhannongWeeklyItem) {
   return [
     item.raw_title && `원문 제목: ${stripHtml(item.raw_title)}`,
+    item.link && `원문 링크: ${item.link}`,
     item.raw_body && `원문 요약: ${stripHtml(item.raw_body)}`,
     item.body && `카드뉴스 요약:\n${stripHtml(item.body)}`,
     item.company && `관련 기업: ${item.company}`,
@@ -103,6 +104,17 @@ function freshFetchUrl(url: string) {
   return nextUrl.toString();
 }
 
+function baseWeeklyUrl(url: string) {
+  const nextUrl = new URL(url);
+  nextUrl.search = "";
+  nextUrl.hash = "";
+  return nextUrl.toString();
+}
+
+function cardArticleUrl(url: string, weekDate: string, index: number) {
+  return `${baseWeeklyUrl(url)}#${weekDate}-${index + 1}`;
+}
+
 function selectedWeekDates(database: FarmhannongWeeklyDatabase) {
   const sortedDates = Object.keys(database).sort().reverse();
   const configuredDates = (process.env.WEEKLY_CARD_NEWS_DATES || "")
@@ -114,8 +126,12 @@ function selectedWeekDates(database: FarmhannongWeeklyDatabase) {
     return configuredDates.filter((date) => database[date]?.length);
   }
 
-  const lookbackWeeks = Math.max(1, Math.min(12, Number(process.env.WEEKLY_CARD_NEWS_LOOKBACK_WEEKS || 3)));
-  return sortedDates.slice(0, lookbackWeeks);
+  const lookbackWeeks = Number(process.env.WEEKLY_CARD_NEWS_LOOKBACK_WEEKS || 0);
+  if (lookbackWeeks > 0) {
+    return sortedDates.slice(0, Math.min(520, lookbackWeeks));
+  }
+
+  return sortedDates;
 }
 
 export function isFarmhannongWeeklySource(url: string, sourceName?: string | null) {
@@ -164,13 +180,14 @@ export async function collectFarmhannongWeeklyArticles(
       const title = normalizeTitle(item.title || item.raw_title || `Farmhannong Weekly item ${index + 1}`);
       const source = item.source || "Farmhannong Agro Weekly";
       const originalText = buildArticleText(item) || title;
-      const urlForArticle = item.link || `${url}#${weekDate}-${index + 1}`;
+      const urlForArticle = cardArticleUrl(url, weekDate, index);
 
       return {
         title,
         source,
         sourceId: options?.sourceId || null,
         url: urlForArticle,
+        duplicateKey: `farmhannong-card:${weekDate}:${index + 1}`,
         publishedAt: new Date(`${weekDate}T09:00:00+09:00`).toISOString(),
         country: item.country || null,
         category: categoryFromTag(item.tag),

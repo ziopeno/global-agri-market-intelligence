@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AlertTriangle, ArrowUpRight, Rss } from "lucide-react";
 import { DashboardSignalCards } from "@/components/dashboard-signal-cards";
-import { DailyScoresChart, ProductImpactChart } from "@/components/impact-charts";
+import { MarketScoreTrendChart, ProductImpactChart } from "@/components/impact-charts";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardData } from "@/lib/dashboard";
@@ -56,11 +56,11 @@ export default async function DashboardPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>최근 7일 시장 점수</CardTitle>
-            <CardDescription>기사 단위 시장 영향 합산</CardDescription>
+            <CardTitle>주차별 시장 점수</CardTitle>
+            <CardDescription>한달·분기·반기·연도 기준으로 범위 선택</CardDescription>
           </CardHeader>
           <CardContent>
-            <DailyScoresChart data={data.dailyScores} />
+            <MarketScoreTrendChart data={data.weeklyScores} />
           </CardContent>
         </Card>
       </section>
@@ -121,7 +121,7 @@ export default async function DashboardPage() {
                       <p className="mt-1 line-clamp-2 text-sm text-slate-600">{article.summary || "아직 AI 분석 전입니다."}</p>
                       <div className="mt-2 text-xs text-slate-500">{formatDateTime(article.publishedAt)}</div>
                     </div>
-                    <a href={article.url} target="_blank" rel="noreferrer" className="rounded-md p-2 text-slate-500 hover:bg-slate-100">
+                    <a href={article.originalUrl || article.url} target="_blank" rel="noreferrer" className="rounded-md p-2 text-slate-500 hover:bg-slate-100">
                       <ArrowUpRight className="h-4 w-4" />
                     </a>
                   </div>

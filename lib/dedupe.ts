@@ -12,7 +12,11 @@ export function normalizeArticleUrl(url: string) {
   if (!url) return "";
   try {
     const parsed = new URL(url);
-    parsed.hash = "";
+    const isFarmhannongCardUrl =
+      parsed.hostname === "ziopeno.github.io" &&
+      parsed.pathname.includes("/farmhannong-agro-weekly-db") &&
+      /^#\d{4}-\d{2}-\d{2}-\d+$/.test(parsed.hash);
+    if (!isFarmhannongCardUrl) parsed.hash = "";
     ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "fbclid", "gclid"].forEach((key) =>
       parsed.searchParams.delete(key)
     );

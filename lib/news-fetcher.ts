@@ -31,59 +31,134 @@ async function logSourceFetch(input: {
   });
 }
 
-async function saveFetchedArticle(source: {
+async function saveFetchedArticles(source: {
   id: string;
   name: string;
   category: string | null;
   country: string | null;
-}, article: ArticleInput) {
-  const url = normalizeArticleUrl(article.url);
-  const duplicateKey = createArticleDuplicateKey({
-    title: article.title,
-    source: source.name
-  });
-
-  const existing = await prisma.article.findFirst({
-    where: {
-      OR: [{ url }, { duplicateKey }]
-    },
-    select: { id: true }
-  });
-
-  if (existing) {
-    await prisma.article.update({
-      where: { id: existing.id },
-      data: { fetchedAt: new Date() }
-    }).catch(() => undefined);
-    return { status: "duplicate" as const, articleId: existing.id };
-  }
-
-  try {
-    const created = await prisma.article.create({
-      data: {
-        title: article.title,
-        source: source.name,
-        sourceId: source.id,
-        url,
-        publishedAt: article.publishedAt ? new Date(article.publishedAt) : new Date(),
-        country: article.country || source.country,
-        crop: article.crop,
-        category: article.category || source.category,
-        originalText: article.originalText,
-        rawContent: article.rawContent || article.originalText,
-        fetchStatus: "fetched",
-        analysisStatus: "pending",
-        duplicateKey,
-        fetchedAt: new Date()
-      }
+}, articles: ArticleInput[]) {
+  const preparedArticles = articles.map((article) => {
+    const publishedAt = article.publishedAt ? new Date(article.publishedAt) : new Date();
+    const duplicateKey = article.duplicateKey || createArticleDuplicateKey({
+      title: article.title,
+      source: source.name
     });
-    return { status: "created" as const, articleId: created.id };
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return { status: "duplicate" as const, articleId: null };
+
+    return {
+      article,
+      url: normalizeArticleUrl(article.url),
+      duplicateKey,
+      publishedAt,
+      titleDateKey: `${article.title}::${publishedAt.toISOString()}`
+    };
+  });
+
+  const urls = [...new Set(preparedArticles.map((article) => article.url))];
+  const duplicateKeys = [...new Set(preparedArticles.map((article) => article.duplicateKey))];
+  const publishedDates = [...new Set(preparedArticles.map((article) => article.publishedAt.toISOString()))]
+    .map((date) => new Date(date));
+  const existingArticles = await prisma.article.findMany({
+    where: {
+      OR: [
+        { url: { in: urls } },
+        { duplicateKey: { in: duplicateKeys } },
+        { source: source.name, publishedAt: { in: publishedDates } }
+      ]
+    },
+    select: {
+      id: true,
+      title: true,
+      url: true,
+      duplicateKey: true,
+      publishedAt: true
     }
-    throw error;
+  });
+
+  const byUrl = new Map(existingArticles.map((article) => [article.url, article]));
+  const byDuplicateKey = new Map(existingArticles.map((article) => [article.duplicateKey, article]));
+  const byTitleDate = new Map(existingArticles.map((article) => [`${article.title}::${article.publishedAt.toISOString()}`, article]));
+  const createData: Prisma.ArticleCreateManyInput[] = [];
+  const createDuplicateKeys: string[] = [];
+  const errors: string[] = [];
+  let duplicates = 0;
+
+  for (const prepared of preparedArticles) {
+    const existing =
+      byUrl.get(prepared.url) ||
+      byDuplicateKey.get(prepared.duplicateKey) ||
+      byTitleDate.get(prepared.titleDateKey);
+
+    if (existing) {
+      duplicates += 1;
+      const needsCardIdentityUpdate = existing.url !== prepared.url || existing.duplicateKey !== prepared.duplicateKey;
+      if (needsCardIdentityUpdate) {
+        try {
+          await prisma.article.update({
+            where: { id: existing.id },
+            data: {
+              title: prepared.article.title,
+              source: source.name,
+              sourceId: source.id,
+              url: prepared.url,
+              duplicateKey: prepared.duplicateKey,
+              publishedAt: prepared.publishedAt,
+              country: prepared.article.country || source.country,
+              crop: prepared.article.crop,
+              category: prepared.article.category || source.category,
+              originalText: prepared.article.originalText,
+              rawContent: prepared.article.rawContent || prepared.article.originalText,
+              fetchedAt: new Date()
+            }
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unknown article update error";
+          errors.push(`update: ${message}`);
+        }
+      }
+      continue;
+    }
+
+    createDuplicateKeys.push(prepared.duplicateKey);
+    createData.push({
+      title: prepared.article.title,
+      source: source.name,
+      sourceId: source.id,
+      url: prepared.url,
+      publishedAt: prepared.publishedAt,
+      country: prepared.article.country || source.country,
+      crop: prepared.article.crop,
+      category: prepared.article.category || source.category,
+      originalText: prepared.article.originalText,
+      rawContent: prepared.article.rawContent || prepared.article.originalText,
+      fetchStatus: "fetched",
+      analysisStatus: "pending",
+      duplicateKey: prepared.duplicateKey,
+      fetchedAt: new Date()
+    });
   }
+
+  const createResult = createData.length
+    ? await prisma.article.createMany({ data: createData, skipDuplicates: true })
+    : { count: 0 };
+  const createdArticles = createDuplicateKeys.length
+    ? await prisma.article.findMany({
+        where: {
+          duplicateKey: { in: createDuplicateKeys },
+          analysisStatus: "pending"
+        },
+        select: { id: true },
+        orderBy: { publishedAt: "desc" }
+      })
+    : [];
+
+  duplicates += createData.length - createResult.count;
+
+  return {
+    created: createResult.count,
+    duplicates,
+    createdArticleIds: createdArticles.map((article) => article.id),
+    errors
+  };
 }
 
 async function analyzeNewArticles(articleIds: string[]) {
@@ -138,22 +213,15 @@ export async function runNewsFetchJob(): Promise<NewsFetchJobResult> {
       const articles = await collectFarmhannongWeeklyArticles(source.url, { sourceId: source.id });
       sourceResult.fetched = articles.length;
 
-      for (const article of articles) {
-        try {
-          const saved = await saveFetchedArticle(source, article);
-          if (saved.status === "created" && saved.articleId) {
-            sourceResult.created += 1;
-            createdArticleIds.push(saved.articleId);
-          } else {
-            sourceResult.duplicates += 1;
-          }
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "Unknown article save error";
-          sourceResult.errors.push(`save: ${message}`);
-        }
-      }
+      const saveResult = await saveFetchedArticles(source, articles);
+      sourceResult.created += saveResult.created;
+      sourceResult.duplicates += saveResult.duplicates;
+      sourceResult.errors.push(...saveResult.errors);
+      createdArticleIds.push(...saveResult.createdArticleIds);
 
-      const analysisResult = await analyzeNewArticles(createdArticleIds);
+      const analysisLimit = Math.max(0, Math.min(300, Number(process.env.NEWS_FETCH_ANALYSIS_LIMIT_PER_RUN || 120)));
+      const analysisTargetIds = createdArticleIds.slice(0, analysisLimit);
+      const analysisResult = await analyzeNewArticles(analysisTargetIds);
       sourceResult.analyzed = analysisResult.analyzed;
       sourceResult.errors.push(...analysisResult.errors);
 

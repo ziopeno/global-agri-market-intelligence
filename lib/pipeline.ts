@@ -15,6 +15,7 @@ export async function upsertArticle(input: ArticleInput) {
     title: input.title,
     source: input.source
   });
+  const effectiveDuplicateKey = input.duplicateKey || duplicateKey;
 
   return prisma.article.upsert({
     where: { url: normalizedUrl },
@@ -43,7 +44,7 @@ export async function upsertArticle(input: ArticleInput) {
       rawContent: input.rawContent || input.originalText,
       fetchStatus: "manual",
       analysisStatus: "pending",
-      duplicateKey,
+      duplicateKey: effectiveDuplicateKey,
       fetchedAt: input.fetchedAt ? new Date(input.fetchedAt) : undefined
     }
   });

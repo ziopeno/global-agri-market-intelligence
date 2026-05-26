@@ -307,10 +307,11 @@ function extractBetween(text: string, label: string, nextLabels: string[]) {
 
 function parseWeeklyCardContent(article: ArticleRow) {
   const rawContent = article.rawContent || article.originalText || "";
-  const labels = ["원문 제목:", "원문 요약:", "카드뉴스 요약:", "관련 기업:", "검색 키워드:"];
+  const labels = ["원문 제목:", "원문 링크:", "원문 요약:", "카드뉴스 요약:", "관련 기업:", "검색 키워드:"];
   const cardSummary = extractBetween(rawContent, "카드뉴스 요약:", ["관련 기업:", "검색 키워드:"]);
   return {
     rawTitle: extractBetween(rawContent, "원문 제목:", labels.filter((label) => label !== "원문 제목:")) || article.title,
+    originalUrl: extractBetween(rawContent, "원문 링크:", labels.filter((label) => label !== "원문 링크:")) || article.url,
     rawSummary: extractBetween(rawContent, "원문 요약:", labels.filter((label) => label !== "원문 요약:")) || article.summary,
     cardSummary,
     company: extractBetween(rawContent, "관련 기업:", ["검색 키워드:"]),
@@ -699,6 +700,7 @@ function ArticleOriginalModal({
   onClose: () => void;
 }) {
   const originalText = article.rawContent || article.originalText || article.summary || article.title;
+  const originalUrl = parseWeeklyCardContent(article).originalUrl || article.url;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4" role="dialog" aria-modal="true">
@@ -751,7 +753,7 @@ function ArticleOriginalModal({
         <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-white px-5 py-4">
           <p className="text-xs text-slate-500">빨간색 문장은 AI가 점수 판단에 사용한 근거 문장입니다.</p>
           <a
-            href={article.url}
+            href={originalUrl}
             target="_blank"
             rel="noreferrer"
             className="inline-flex h-9 items-center gap-2 rounded-md border bg-white px-3 text-sm font-medium text-slate-800 hover:bg-slate-50"

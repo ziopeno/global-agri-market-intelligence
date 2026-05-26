@@ -7,6 +7,7 @@ export type ArticleInput = {
   title: string;
   source: string;
   url: string;
+  duplicateKey?: string;
   sourceId?: string | null;
   publishedAt?: string;
   country?: string | null;

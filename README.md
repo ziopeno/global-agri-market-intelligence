@@ -209,7 +209,7 @@ Source 필드:
 3. Active 체크 상태로 저장하면 다음 자동 수집부터 포함됩니다.
 4. 특정 Source를 잠시 제외하려면 Active 체크를 끕니다.
 
-Seed에는 Farmhannong Agro Weekly DB Source가 들어갑니다. 정적 HTML 안의 최신 주차 `newsDatabase`를 전용 수집기로 읽고, 별도 자체 검색용 RSS는 자동 수집에 사용하지 않습니다.
+Seed에는 Farmhannong Agro Weekly DB Source가 들어갑니다. 정적 HTML 안의 전체 `newsDatabase`를 전용 수집기로 읽고, 별도 자체 검색용 RSS는 자동 수집에 사용하지 않습니다.
 
 - Farmhannong Agro Weekly DB
 
@@ -224,10 +224,10 @@ POST /api/jobs/fetch-news
 실행 순서:
 
 1. active Farmhannong Agro Weekly DB Source 조회
-2. Farmhannong Weekly DB fetch
-3. 기사 title, url, published_at, source, snippet/raw content 저장
-4. 같은 URL 또는 같은 title + source 조합 중복 제외
-5. 신규 기사 AI 분석
+2. Farmhannong Weekly DB 전체 카드뉴스 fetch
+3. 카드뉴스 고유 URL, 원문 기사 링크, published_at, source, snippet/raw content 저장
+4. 같은 카드뉴스 주차+번호는 중복 제외하되, 같은 원문 링크를 공유하는 카드뉴스도 별도 항목으로 누적
+5. 신규 기사 AI 분석. 대량 백필 시에는 최신 신규 기사부터 분석하고 나머지는 pending으로 저장
 6. `article_analyses`, `article_factors`, `product_impact` 저장
 7. Daily Report 업데이트
 8. Source별 fetch log 저장

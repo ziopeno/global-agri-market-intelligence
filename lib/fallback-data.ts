@@ -9,6 +9,7 @@ export function getFallbackDashboardData() {
     crop: article.crop,
     category: article.category,
     url: article.url,
+    originalUrl: article.url,
     summary: article.summary,
     marketImpactScore: index === 0 ? -4.8 : index === 1 ? 3.6 : -2.4,
     adjustedMarketScore: index === 0 ? -4.8 : index === 1 ? 3.6 : -2.4,
@@ -45,6 +46,11 @@ export function getFallbackDashboardData() {
     dailyScores: SAMPLE_ARTICLES.map((article, index) => ({
       date: article.publishedAt.toISOString().slice(0, 10),
       score: index === 0 ? -4.8 : index === 1 ? 3.6 : -2.4
+    })).sort((a, b) => a.date.localeCompare(b.date)),
+    weeklyScores: SAMPLE_ARTICLES.map((article, index) => ({
+      date: article.publishedAt.toISOString().slice(0, 10),
+      score: index === 0 ? -4.8 : index === 1 ? 3.6 : -2.4,
+      articleCount: 1
     })).sort((a, b) => a.date.localeCompare(b.date))
   };
 }
