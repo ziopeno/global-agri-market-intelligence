@@ -44,7 +44,7 @@ export default async function ReviewPage() {
       <section>
         <Card>
           <CardHeader>
-            <CardTitle>Factor Review</CardTitle>
+            <CardTitle>요인 점수 검토</CardTitle>
             <CardDescription>
               AI가 추출한 근거 문장, 점수, 보정 가중치를 사람이 확인하고 수정하면 다음 제품 영향 점수와 리포트에 반영됩니다.
             </CardDescription>
@@ -52,16 +52,16 @@ export default async function ReviewPage() {
           <CardContent>
             <div className="grid gap-3 text-sm text-slate-600 md:grid-cols-3">
               <div className="rounded-md border bg-white p-3">
-                <div className="font-semibold text-slate-950">Adjusted Market Score</div>
-                <p className="mt-1">Factor Score에 시장 규모, 제품 관련성, 최신성, 근거 강도를 곱해 계산합니다.</p>
+                <div className="font-semibold text-slate-950">보정 시장 점수</div>
+                <p className="mt-1">요인 기본 점수에 시장 규모 보정, 제품 관련성 보정, 최신성 보정, 근거 강도 보정을 곱해 계산합니다.</p>
               </div>
               <div className="rounded-md border bg-white p-3">
-                <div className="font-semibold text-slate-950">Normalized Country Score</div>
+                <div className="font-semibold text-slate-950">정규화 국가 점수</div>
                 <p className="mt-1">국가 총점을 기사 수로 나눠 기사 수 편향을 줄입니다.</p>
               </div>
               <div className="rounded-md border bg-white p-3">
-                <div className="font-semibold text-slate-950">Weighted Country Score</div>
-                <p className="mt-1">정규화 점수에 관리자가 정한 사업 중요도 가중치를 곱합니다.</p>
+                <div className="font-semibold text-slate-950">가중 국가 점수</div>
+                <p className="mt-1">정규화 점수에 관리자가 정한 사업 중요도 보정값을 곱합니다.</p>
               </div>
             </div>
           </CardContent>
@@ -84,7 +84,7 @@ export default async function ReviewPage() {
         <Card>
           <CardHeader>
             <CardTitle>요인별 근거 및 점수 검토</CardTitle>
-            <CardDescription>Impact, Likelihood, Duration, Reliability와 근거 문장을 수정할 수 있습니다.</CardDescription>
+            <CardDescription>영향 크기, 발생 가능성, 지속 기간 보정, 출처 신뢰도 보정과 근거 문장을 수정할 수 있습니다.</CardDescription>
           </CardHeader>
           <CardContent>
             <FactorReviewTable factors={serializedFactors} />

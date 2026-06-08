@@ -44,7 +44,7 @@ function signedFormula(factor: any) {
   const direction = Number(factor.direction || 0);
   const sign = direction > 0 ? "+1" : "-1";
   const reliability = Number(factor.reliability || 0).toFixed(1);
-  return `${sign} x Impact ${factor.impact} x Likelihood ${factor.likelihood} x Duration ${factor.duration} x Reliability ${reliability}x`;
+  return `영향 방향 ${sign} x 영향 크기 ${factor.impact} x 발생 가능성 ${factor.likelihood} x 지속 기간 보정 ${factor.duration} x 출처 신뢰도 보정 ${reliability}`;
 }
 
 const FACTOR_KEYWORDS: Record<string, string[]> = {
@@ -170,11 +170,11 @@ function scoreAssessmentForFactor(factor: any) {
 
 function factorFormulaSummary(factor: any) {
   return [
-    `Impact ${Number(factor.impact || 0)}`,
-    `Likelihood ${Number(factor.likelihood || 0)}`,
-    `Duration x${Number(factor.duration || 0).toFixed(1)}`,
-    `Reliability x${Number(factor.reliability || 0).toFixed(1)}`,
-    `Adjusted ${formatScore(adjustedFactorScoreValue(factor))}`
+    `영향 크기 ${Number(factor.impact || 0)}`,
+    `발생 가능성 ${Number(factor.likelihood || 0)}`,
+    `지속 기간 보정 x${Number(factor.duration || 0).toFixed(1)}`,
+    `출처 신뢰도 보정 x${Number(factor.reliability || 0).toFixed(1)}`,
+    `최종 보정 점수 ${formatScore(adjustedFactorScoreValue(factor))}`
   ].join(" · ");
 }
 
@@ -283,7 +283,7 @@ function buildMarketImpactReason(article: ArticleRow) {
 
   return {
     total,
-    formula: "각 항목은 원문 판단 근거를 기준으로 계산한 Factor Score에 시장 규모, 제품 관련성, 최신성, 근거 강도를 곱해 보정했습니다.",
+    formula: "각 항목은 원문 판단 근거를 기준으로 계산한 요인 기본 점수에 시장 규모 보정, 제품 관련성 보정, 최신성 보정, 근거 강도 보정을 곱해 산출했습니다.",
     topFactors
   };
 }
@@ -615,7 +615,7 @@ function WeeklyCardAnalysis({ article, relatedProducts, marketImpactReason }: {
 
         <div className="mx-auto w-[80%] rounded-md border bg-emerald-50 p-3">
           <div className="text-xs font-semibold text-emerald-700">3. 점수화</div>
-          <div className="mt-1 text-sm font-semibold text-slate-950">Market Impact {formatScore(marketImpactReason.total)}</div>
+          <div className="mt-1 text-sm font-semibold text-slate-950">시장 영향 점수 {formatScore(marketImpactReason.total)}</div>
           <p className="mt-1 text-xs leading-5 text-slate-600">
             {factor
               ? `${signedFormula(factor)} = ${formatScore(factorScoreValue(factor))}, 보정 후 ${formatScore(adjustedFactorScoreValue(factor))}`
@@ -894,7 +894,7 @@ function ArticleCard({
                   </span>
                 </div>
                 <div className="mt-1 font-mono text-slate-500">
-                  보정 = {formatScore(adjustedFactorScoreValue(factor))} · Market Size x{Number(factor.marketSizeWeight ?? 1).toFixed(2)} · Product x{Number(factor.productRelevanceWeight ?? 1).toFixed(2)} · Recency x{Number(factor.recencyWeight ?? 1).toFixed(2)} · Evidence x{Number(factor.evidenceStrength ?? 1).toFixed(2)}
+                  최종 보정 점수 = {formatScore(adjustedFactorScoreValue(factor))} · 시장 규모 보정 x{Number(factor.marketSizeWeight ?? 1).toFixed(2)} · 제품 관련성 보정 x{Number(factor.productRelevanceWeight ?? 1).toFixed(2)} · 최신성 보정 x{Number(factor.recencyWeight ?? 1).toFixed(2)} · 근거 강도 보정 x{Number(factor.evidenceStrength ?? 1).toFixed(2)}
                 </div>
                 <div className="mt-2 rounded-md border border-slate-100 bg-slate-50 p-2">
                   <div className="grid gap-3 md:grid-cols-[1.05fr_0.95fr]">

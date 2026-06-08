@@ -96,7 +96,7 @@ export async function recalculateArticleScores(articleId: string) {
       .slice(0, 3)
       .map((factor) => {
         const sensitivity = Number(sensitivityByFactor[factor.factor_name] ?? 0).toFixed(2);
-        return `${factor.factor_name}: adjusted ${factor.factor_score.toFixed(1)} x sensitivity ${sensitivity}`;
+        return `${factor.factor_name}: 보정 점수 ${factor.factor_score.toFixed(1)} x 제품 민감도 ${sensitivity}`;
       })
       .join("; ");
 

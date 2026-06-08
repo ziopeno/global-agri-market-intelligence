@@ -123,16 +123,16 @@ scripts/
 ## 점수 공식
 
 ```text
-Factor Score = Direction x Impact x Likelihood x Duration x Reliability
-Market Impact Score = sum(Factor Score)
-Adjusted Market Score = Factor Score x Market Size Weight x Product Relevance Weight x Recency Weight x Evidence Strength
-Normalized Country Score = Country Total Score / Article Count
-Weighted Country Score = Normalized Country Score x Business Importance Weight
-Product Impact Score = sum(Adjusted Factor Score x Product Sensitivity)
+요인 기본 점수 = 영향 방향 x 영향 크기 x 발생 가능성 x 지속 기간 보정 x 출처 신뢰도 보정
+시장 영향 점수 = sum(요인 기본 점수)
+보정 시장 점수 = 요인 기본 점수 x 시장 규모 보정 x 제품 관련성 보정 x 최신성 보정 x 근거 강도 보정
+정규화 국가 점수 = 국가 총점 / 기사 수
+가중 국가 점수 = 정규화 국가 점수 x 사업 중요도 보정
+제품 영향 점수 = sum(보정 요인 점수 x 제품 민감도)
 ```
 
 제품 영향 점수는 기사 안의 여러 요인이 서로 다른 민감도와 연결될 수 있으므로, MVP에서는 요인별 곱을 합산합니다.
-관리자는 `/review`에서 국가별 `Business Importance Weight`와 요인별 점수·근거 문장을 수정할 수 있으며, 수정 이력은 `factor_score_revisions`에 저장됩니다.
+관리자는 `/review`에서 국가별 사업 중요도 보정값과 요인별 점수·근거 문장을 수정할 수 있으며, 수정 이력은 `factor_score_revisions`에 저장됩니다.
 
 ## 실행 방법
 

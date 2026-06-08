@@ -50,7 +50,7 @@ const pages = [
   {
     name: "검토",
     purpose: "AI가 산출한 요인 점수와 근거 문장을 사람이 확인합니다.",
-    use: "Impact, Likelihood, Duration, Reliability, 근거 문장, 국가별 사업 중요도 가중치를 수정합니다.",
+    use: "영향 크기, 발생 가능성, 지속 기간 보정, 출처 신뢰도 보정, 근거 문장, 국가별 사업 중요도 보정값을 수정합니다.",
     decision: "검토된 점수만 다음 제품 영향 점수와 리포트에 반영되도록 품질을 관리합니다."
   },
   {
@@ -82,11 +82,11 @@ const operatingTasks = [
 ];
 
 const scoreRows = [
-  ["Direction", "+1 또는 -1", "시장에 긍정적이면 +1, 부정적이면 -1"],
-  ["Impact", "1~5", "시장에 미치는 크기"],
-  ["Likelihood", "1~5", "실제로 발생하거나 지속될 가능성"],
-  ["Duration", "1.0 / 1.3 / 1.6", "단기, 중기, 장기 영향"],
-  ["Reliability", "1.0 / 0.8 / 0.6 / 0.4", "점수가 아니라 출처 신뢰도 보정계수이며, 1.0이 가장 높음"]
+  ["영향 방향", "+1 또는 -1", "시장에 긍정적이면 +1, 부정적이면 -1"],
+  ["영향 크기", "1~5", "시장에 미치는 크기"],
+  ["발생 가능성", "1~5", "실제로 발생하거나 지속될 가능성"],
+  ["지속 기간 보정", "1.0 / 1.3 / 1.6", "단기, 중기, 장기 영향"],
+  ["출처 신뢰도 보정", "1.0 / 0.8 / 0.6 / 0.4", "점수가 아니라 출처 신뢰도 보정계수이며, 1.0이 가장 높음"]
 ];
 
 const impactScaleRows = IMPACT_SCORE_CRITERIA.map((item) => [String(item.score), item.label, item.criterion] as const);
@@ -194,7 +194,7 @@ export default function GuidePage() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm leading-6 text-slate-700">
             <p>AI는 기사 요약, 국가, 작물, 이슈 유형, 시장 요인을 추출합니다.</p>
-            <p>각 요인은 Direction, Impact, Likelihood, Duration, Reliability 기준으로 계산됩니다.</p>
+            <p>각 요인은 영향 방향, 영향 크기, 발생 가능성, 지속 기간 보정, 출처 신뢰도 보정 기준으로 계산됩니다.</p>
             <p>모든 점수는 기사와 요인 근거에 연결되어 나중에 사람이 검토하고 수정할 수 있습니다.</p>
             <p>OpenAI API 키가 없을 때는 데모용 휴리스틱 분석으로 화면 동작을 확인할 수 있습니다.</p>
           </CardContent>
@@ -208,22 +208,22 @@ export default function GuidePage() {
         </CardHeader>
         <CardContent className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="space-y-3 rounded-md border bg-slate-50 p-4 text-sm text-slate-700">
-            <div className="font-semibold text-slate-950">Factor Score</div>
+            <div className="font-semibold text-slate-950">요인 기본 점수</div>
             <div className="rounded-md bg-white p-3 font-mono text-xs text-slate-700">
-              Direction × Impact × Likelihood × Duration × Reliability
+              영향 방향 × 영향 크기 × 발생 가능성 × 지속 기간 보정 × 출처 신뢰도 보정
             </div>
-            <div className="font-semibold text-slate-950">Market Impact Score</div>
-            <div className="rounded-md bg-white p-3 font-mono text-xs text-slate-700">기사 내 모든 Factor Score 합산</div>
-            <div className="font-semibold text-slate-950">Adjusted Market Score</div>
+            <div className="font-semibold text-slate-950">시장 영향 점수</div>
+            <div className="rounded-md bg-white p-3 font-mono text-xs text-slate-700">기사 내 모든 요인 기본 점수 합산</div>
+            <div className="font-semibold text-slate-950">보정 시장 점수</div>
             <div className="rounded-md bg-white p-3 font-mono text-xs text-slate-700">
-              Factor Score × Market Size × Product Relevance × Recency × Evidence Strength
+              요인 기본 점수 × 시장 규모 보정 × 제품 관련성 보정 × 최신성 보정 × 근거 강도 보정
             </div>
-            <div className="font-semibold text-slate-950">Normalized Country Score</div>
-            <div className="rounded-md bg-white p-3 font-mono text-xs text-slate-700">Country Total Score ÷ Article Count</div>
-            <div className="font-semibold text-slate-950">Weighted Country Score</div>
-            <div className="rounded-md bg-white p-3 font-mono text-xs text-slate-700">Normalized Country Score × Business Importance Weight</div>
-            <div className="font-semibold text-slate-950">Product Impact Score</div>
-            <div className="rounded-md bg-white p-3 font-mono text-xs text-slate-700">Adjusted Market Score × Product Sensitivity</div>
+            <div className="font-semibold text-slate-950">정규화 국가 점수</div>
+            <div className="rounded-md bg-white p-3 font-mono text-xs text-slate-700">국가 총점 ÷ 기사 수</div>
+            <div className="font-semibold text-slate-950">가중 국가 점수</div>
+            <div className="rounded-md bg-white p-3 font-mono text-xs text-slate-700">정규화 국가 점수 × 사업 중요도 보정</div>
+            <div className="font-semibold text-slate-950">제품 영향 점수</div>
+            <div className="rounded-md bg-white p-3 font-mono text-xs text-slate-700">보정 시장 점수 × 제품 민감도</div>
           </div>
 
           <div className="overflow-x-auto rounded-md border">
@@ -249,12 +249,12 @@ export default function GuidePage() {
 
           <div className="space-y-4 lg:col-span-2">
             <div className="rounded-md border bg-emerald-50 p-4 text-sm leading-6 text-emerald-950">
-              Impact와 Likelihood는 1~5점 척도이며, 아래 정량 구간에 맞춰 점수를 선택합니다.
-              Duration과 Reliability는 점수가 아니라 보정계수입니다. 근거가 애매하면 높은 구간이 아니라 낮은 구간을 적용합니다.
+              영향 크기와 발생 가능성은 1~5점 척도이며, 아래 정량 구간에 맞춰 점수를 선택합니다.
+              지속 기간 보정과 출처 신뢰도 보정은 점수가 아니라 보정계수입니다. 근거가 애매하면 높은 구간이 아니라 낮은 구간을 적용합니다.
             </div>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div className="overflow-hidden rounded-md border bg-white">
-                <div className="border-b bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-950">Impact 1~5점 기준</div>
+                <div className="border-b bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-950">영향 크기 1~5점 기준</div>
                 <table className="w-full text-sm">
                   <tbody>
                     {impactScaleRows.map(([score, label, meaning]) => (
@@ -269,7 +269,7 @@ export default function GuidePage() {
               </div>
 
               <div className="overflow-hidden rounded-md border bg-white">
-                <div className="border-b bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-950">Likelihood 1~5점 기준</div>
+                <div className="border-b bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-950">발생 가능성 1~5점 기준</div>
                 <table className="w-full text-sm">
                   <tbody>
                     {likelihoodScaleRows.map(([score, label, meaning]) => (
@@ -284,7 +284,7 @@ export default function GuidePage() {
               </div>
 
               <div className="overflow-hidden rounded-md border bg-white">
-                <div className="border-b bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-950">Duration 보정계수</div>
+                <div className="border-b bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-950">지속 기간 보정계수</div>
                 <table className="w-full text-sm">
                   <tbody>
                     {durationScaleRows.map(([score, label, meaning]) => (
@@ -299,7 +299,7 @@ export default function GuidePage() {
               </div>
 
               <div className="overflow-hidden rounded-md border bg-white">
-                <div className="border-b bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-950">Reliability 보정계수</div>
+                <div className="border-b bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-950">출처 신뢰도 보정계수</div>
                 <table className="w-full text-sm">
                   <tbody>
                     {reliabilityScaleRows.map(([score, label, meaning]) => (
@@ -314,7 +314,7 @@ export default function GuidePage() {
               </div>
             </div>
             <div className="rounded-md border bg-slate-50 p-4">
-              <div className="text-sm font-semibold text-slate-950">Duration 1.0 / 1.3 / 1.6 검증과 해석</div>
+              <div className="text-sm font-semibold text-slate-950">지속 기간 보정 1.0 / 1.3 / 1.6 검증과 해석</div>
               <div className="mt-2 space-y-2 text-sm leading-6 text-slate-700">
                 {DURATION_WEIGHT_RATIONALE.map((item) => (
                   <p key={item}>{item}</p>
@@ -324,11 +324,11 @@ export default function GuidePage() {
             <div className="rounded-md border bg-slate-50 p-4">
               <div className="text-sm font-semibold text-slate-950">보정 가중치 운영 기준</div>
               <div className="mt-2 space-y-2 text-sm leading-6 text-slate-700">
-                <p>Market Size Weight는 국가·작물·수입 규모와 우리 회사 매출 규모를 반영하는 내부 정책값입니다.</p>
-                <p>Product Relevance Weight는 대상 작물, 등록 가능 국가, 판매 가능성, 제품 포지셔닝이 맞을수록 높아집니다.</p>
-                <p>Recency Weight는 최근 기사일수록 높고, 90일 이상 지난 신호는 낮게 반영합니다.</p>
-                <p>Evidence Strength는 같은 요인을 지지하는 기사 수와 공식 출처 여부가 확인될수록 높아집니다.</p>
-                <p>Business Importance Weight는 검토 탭에서 관리자가 수정하며, 국가별 우선순위 산정에 직접 반영됩니다.</p>
+                <p>시장 규모 보정은 국가·작물·수입 규모와 우리 회사 매출 규모를 반영하는 내부 정책값입니다.</p>
+                <p>제품 관련성 보정은 대상 작물, 등록 가능 국가, 판매 가능성, 제품 포지셔닝이 맞을수록 높아집니다.</p>
+                <p>최신성 보정은 최근 기사일수록 높고, 90일 이상 지난 신호는 낮게 반영합니다.</p>
+                <p>근거 강도 보정은 같은 요인을 지지하는 기사 수와 공식 출처 여부가 확인될수록 높아집니다.</p>
+                <p>사업 중요도 보정은 검토 탭에서 관리자가 수정하며, 국가별 우선순위 산정에 직접 반영됩니다.</p>
               </div>
             </div>
           </div>

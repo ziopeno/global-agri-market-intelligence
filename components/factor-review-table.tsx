@@ -166,7 +166,7 @@ export function FactorReviewTable({ factors }: { factors: ReviewFactor[] }) {
                 />
                 <div className="grid gap-2 sm:grid-cols-2">
                   <label className="text-xs font-semibold text-slate-500">
-                    AI Confidence
+                    AI 판단 신뢰도
                     <Input
                       className="mt-1"
                       type="number"
@@ -194,7 +194,7 @@ export function FactorReviewTable({ factors }: { factors: ReviewFactor[] }) {
 
               <div className="grid gap-2 sm:grid-cols-2">
                 <label className="text-xs font-semibold text-slate-500">
-                  Direction
+                  영향 방향
                   <select
                     className="mt-1 h-10 w-full rounded-md border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
                     value={draft.direction}
@@ -205,7 +205,7 @@ export function FactorReviewTable({ factors }: { factors: ReviewFactor[] }) {
                   </select>
                 </label>
                 <label className="text-xs font-semibold text-slate-500">
-                  Impact
+                  영향 크기
                   <Input
                     className="mt-1"
                     type="number"
@@ -216,7 +216,7 @@ export function FactorReviewTable({ factors }: { factors: ReviewFactor[] }) {
                   />
                 </label>
                 <label className="text-xs font-semibold text-slate-500">
-                  Likelihood
+                  발생 가능성
                   <Input
                     className="mt-1"
                     type="number"
@@ -227,7 +227,7 @@ export function FactorReviewTable({ factors }: { factors: ReviewFactor[] }) {
                   />
                 </label>
                 <label className="text-xs font-semibold text-slate-500">
-                  Duration
+                  지속 기간 보정
                   <select
                     className="mt-1 h-10 w-full rounded-md border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
                     value={draft.duration}
@@ -239,7 +239,7 @@ export function FactorReviewTable({ factors }: { factors: ReviewFactor[] }) {
                   </select>
                 </label>
                 <label className="text-xs font-semibold text-slate-500">
-                  Reliability
+                  출처 신뢰도 보정
                   <select
                     className="mt-1 h-10 w-full rounded-md border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
                     value={draft.reliability}
@@ -266,11 +266,11 @@ export function FactorReviewTable({ factors }: { factors: ReviewFactor[] }) {
             </div>
 
             <div className="mt-4 grid gap-2 rounded-md bg-slate-50 p-3 text-xs text-slate-600 sm:grid-cols-5">
-              <span>Raw {formatScore(finalScore)}</span>
-              <span>Market Size x{factor.marketSizeWeight.toFixed(2)}</span>
-              <span>Product Relevance x{factor.productRelevanceWeight.toFixed(2)}</span>
-              <span>Recency x{factor.recencyWeight.toFixed(2)}</span>
-              <span>Evidence x{factor.evidenceStrength.toFixed(2)}</span>
+              <span>기본 점수 {formatScore(finalScore)}</span>
+              <span>시장 규모 보정 x{factor.marketSizeWeight.toFixed(2)}</span>
+              <span>제품 관련성 보정 x{factor.productRelevanceWeight.toFixed(2)}</span>
+              <span>최신성 보정 x{factor.recencyWeight.toFixed(2)}</span>
+              <span>근거 강도 보정 x{factor.evidenceStrength.toFixed(2)}</span>
             </div>
 
             <div className="mt-3 flex items-center justify-end gap-2">
